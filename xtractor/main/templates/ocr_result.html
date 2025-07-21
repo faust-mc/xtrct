@@ -1,22 +1,62 @@
-<h2>Label-Value Pairs</h2>
-<table border="1" cellpadding="5">
-    <tr><th>Label</th><th>Value</th></tr>
-    {% for label, value in result.items %}
-        <tr>
-            <td>{{ label }}</td>
-            <td>{{ value }}</td>
-        </tr>
-    {% endfor %}
-</table>
+{% load static %}
+{% load django_bootstrap5 %}
+<!DOCTYPE html>
+<html lang="en">
 
-<h2>Raw OCR Lines (for reference)</h2>
-<table border="1" cellpadding="5">
-    <tr><th>Text</th><th>Center X</th><th>Center Y</th></tr>
-    {% for line in raw_lines %}
-        <tr>
-            <td>{{ line.text }}</td>
-            <td>{{ line.center.0|floatformat:0 }}</td>
-            <td>{{ line.center.1|floatformat:0 }}</td>
-        </tr>
-    {% endfor %}
-</table>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Extractor</title>
+    {% bootstrap_css %}
+    {% bootstrap_javascript %}
+
+    <link rel="stylesheet" href="{% static 'fontawesome/css/all.min.css' %}">
+
+    <style>
+        /* Show it is fixed to the top */
+        body {
+            min-height: 75rem;
+            padding-top: 4.5rem;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">Fixed navbar</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse"
+                aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarCollapse">
+                <ul class="navbar-nav me-auto mb-2 mb-md-0">
+                    <li class="nav-item">
+                        <a class="nav-link active" aria-current="page" href="#">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Link</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link disabled" href="#" tabindex="-1" aria-disabled="true">Disabled</a>
+                    </li>
+                </ul>
+                <form class="d-flex">
+                    <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search">
+                    <button class="btn btn-outline-success" type="submit">Search</button>
+                </form>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container-fluid">
+        <div class="bg-light p-5 rounded">
+            <h1>Config</h1>
+            <h1>Table</h1>  <button class="btn btn-outline-success" type="submit"><i class="fa-solid fa-circle-plus"></i></button>
+            <h1>Field</h1> <button class="btn btn-outline-success" type="submit"><i class="fa-solid fa-circle-plus"></i></button>
+        </div>
+    </main>
+</body>
+
+</html>
+<!-- {{ response.collected_good_eggs }} -->

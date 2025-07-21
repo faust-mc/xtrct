@@ -1,0 +1,85 @@
+{% load static %}
+{% load django_bootstrap5 %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Home{% endblock %}</title>
+    {% bootstrap_css %}
+    {% bootstrap_javascript %}
+
+    <link rel="stylesheet" href="{% static 'fontawesome/css/all.min.css' %}">
+    <link rel="stylesheet" href="{% static 'toastr/toastr.min.css' %}">
+    <link rel="stylesheet" href="{% static 'style.css' %}">
+
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">Fixed navbar</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse"
+                aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarCollapse">
+                <ul class="navbar-nav me-auto mb-2 mb-md-0">
+                    <li class="nav-item">
+                        <a class="nav-link active" aria-current="page" href="#">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Link</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link disabled" href="#" tabindex="-1" aria-disabled="true">Disabled</a>
+                    </li>
+                </ul>
+                <form class="d-flex">
+                    <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search">
+                    <button class="btn btn-outline-success" type="submit">Search</button>
+                </form>
+            </div>
+        </div>
+    </nav>
+
+    {% block content %}
+    <main class="container-fluid">
+        <div class="bg-light p-5 rounded">
+            <h1>Config</h1>
+            <h1>Table</h1> <button class="btn btn-outline-success" type="submit"><i
+                    class="fa-solid fa-circle-plus"></i></button>
+            <h1>Field</h1> <button class="btn btn-outline-success" type="submit"><i
+                    class="fa-solid fa-circle-plus"></i></button>
+        </div>
+    </main>
+    {% endblock %}
+
+    <script src="{% static 'jquery/jquery-3.7.1.min.js' %}"></script>
+    <script src="{% static 'toastr/toastr.min.js' %}"></script>
+    <script src="{% static 'script.js' %}"></script>
+
+    <!-- Loader Overlay -->
+    <div id="loadingOverlay" style="display: none;">
+        <div class="loadingio-spinner-blocks-2by998twmg8">
+            <div class="ldio-yzaezf3dcmj">
+                <div style="left:38px;top:38px;animation-delay:0s"></div>
+                <div style="left:80px;top:38px;animation-delay:0.125s"></div>
+                <div style="left:122px;top:38px;animation-delay:0.25s"></div>
+                <div style="left:38px;top:80px;animation-delay:0.875s"></div>
+                <div style="left:122px;top:80px;animation-delay:0.375s"></div>
+                <div style="left:38px;top:122px;animation-delay:0.75s"></div>
+                <div style="left:80px;top:122px;animation-delay:0.625s"></div>
+                <div style="left:122px;top:122px;animation-delay:0.5s"></div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
+{% block scripts %}
+<!-- scripts run here -->
+{% endblock %}
+
+<!-- {{ response.collected_good_eggs }} -->

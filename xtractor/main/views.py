@@ -1,6 +1,11 @@
 from django.http import JsonResponse
+from django.shortcuts import render, redirect
 from django.views.decorators.csrf import csrf_exempt
 import json
+
+#return render(request, 'pdf_list.html', {'documents': documents})
+def config(request):
+    return render(request, 'config.html')
 
 @csrf_exempt
 def ocr_result_view(request):
@@ -185,16 +190,22 @@ def ocr_result_view(request):
             field_values[col] = closest["text"] if closest and dist < 10 else "N/A"
         breakages_table[field] = field_values
 
-    # ✅ Return All Extracted Info as JSON
-    return JsonResponse({
+    #Return All Extracted Info as JSON
+    # return JsonResponse({
+    #     "collected_good_eggs": label_value_pairs,
+    #     "extra_totals": extra_totals,
+    #     "reject_eggs": reject_table,
+    #     "breakages": breakages_table
+    # }, json_dumps_params={"indent": 2})
+
+    response = {
         "collected_good_eggs": label_value_pairs,
         "extra_totals": extra_totals,
         "reject_eggs": reject_table,
         "breakages": breakages_table
-    }, json_dumps_params={"indent": 2})
+    }
 
-
-
+    return render(request, 'ocr_result.html' , {'response' : response })
 
 @csrf_exempt
 def quantity_graded_eggs(request):
