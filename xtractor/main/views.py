@@ -1,9 +1,15 @@
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
+from .models import  Type, FormObject, HeaderObjects, RowObjects, FieldObject
 
 @csrf_exempt
 def ocr_result_view(request):
+    table_name = "COLLECTED GOOD EGGS"
+    table_name = "COLLECTED REJECT EGGS"
+
+    table = FormObject.objects.get(title=table_name)
+    print(table)
     with open("main/samp3json.json") as f:
         ocr_data = json.load(f)
 
@@ -22,59 +28,8 @@ def ocr_result_view(request):
                 "bbox": line["boundingPolygon"]
             })
 
-    # === COLLECTED GOOD EGGS ===
-    quantity_x = total_x = None
-    target_x = target_y = None
+    # === Step 1: Locate "COLLECTED GOOD EGGS" ===
 
-    for line in lines:
-        text_upper = line["text"].strip().upper()
-        if "QUANTITY" in text_upper:
-            quantity_x = line["center"][0]
-        if "COLLECTED GOOD EGGS" in text_upper:
-            target_x, target_y = line["center"]
-
-    min_distance = float("inf")
-    for line in lines:
-        text_upper = line["text"].strip().upper()
-        cx, cy = line["center"]
-        if "TOTAL" in text_upper and cx > target_x and cy > target_y:
-            distance = ((cx - target_x)**2 + (cy - target_y)**2)**0.5
-            if distance < min_distance:
-                min_distance = distance
-                total_x = cx
-
-    if quantity_x is None or total_x is None:
-        return JsonResponse({"error": "QUANTITY or TOTAL column not found"}, status=400)
-
-    labels_to_find = ['SUPER JUMBO', 'JUMBO', 'EXTRA LARGE', 'LARGE', 'MEDIUM', 'SMALL', "EXTRA SMALL", 'PEWEE']
-    label_value_pairs = {}
-
-    for label in labels_to_find:
-        for line in lines:
-            if label == line["text"].strip().upper():
-                label_x, label_y = line["center"]
-                same_row = [c for c in lines if abs(c["center"][1] - label_y) < 10]
-                closest_quantity = closest_total = None
-                min_q_dist = min_t_dist = float("inf")
-
-                for candidate in same_row:
-                    if candidate == line:
-                        continue
-                    cx = candidate["center"][0]
-                    q_dist = abs(cx - quantity_x)
-                    t_dist = abs(cx - total_x)
-                    if q_dist < min_q_dist:
-                        min_q_dist = q_dist
-                        closest_quantity = candidate
-                    if t_dist < min_t_dist:
-                        min_t_dist = t_dist
-                        closest_total = candidate
-
-                label_value_pairs[label] = {
-                    "quantity": closest_quantity["text"] if closest_quantity else "N/A",
-                    "total": closest_total["text"] if closest_total else "N/A"
-                }
-                break
 
     # === EXTRA TOTALS ===
     TOTAL_COUNT_TO_FIND = ['MOBA COUNT:', 'ACTUAL COUNT:', 'GOOD EGGS:', 'SD EGGS:', 'REJECT EGGS:', "DATE:",  "START:", "END:", "HOUSE/S:", "SPEED:"]
@@ -100,97 +55,69 @@ def ocr_result_view(request):
     # === COLLECTED REJECT EGGS ===
     reject_anchor_y = None
     for line in lines:
-        if line["text"].strip().upper() == "COLLECTED REJECT EGGS":
+        print(line)
+        print()
+        if line["text"].strip().upper() == table.title:
             _, reject_anchor_y = line["center"]
             break
 
-    reject_headers = ["ACCUMULATOR", "CANDLING", "TAKE AWAY", "BYPASS", "TOTAL"]
+    #header_names = ["QUANTITY", "TOTAL"]
+    header_names = list(
+        HeaderObjects.objects
+        .filter(form_object=table)
+        .exclude(header_type="label")
+        .values_list('header_name', flat=True)
+    )
+
     header_x_positions = {}
     if reject_anchor_y is not None:
         for line in lines:
+
             text = line["text"].strip().upper()
             cx, cy = line["center"]
-            if text in reject_headers and abs(cy - reject_anchor_y) < 100:
+            if text in header_names and abs(cy - reject_anchor_y) < 100:
                 header_x_positions[text] = cx
 
-    reject_fields = ["SLIGHTLY DIRTY", "DIRTY MANURE", "DIRTY YOLK", "DIRTY GREASE", "DIRTY BLOOD", "DEFORMED", "PULLETS", "BLOODSPOT", "MEATSPOT", "SPOILED EGGS", "SOFT SHELL"]
+    row_names = ['SUPER JUMBO', 'JUMBO', 'EXTRA LARGE', 'LARGE', 'MEDIUM', 'SMALL', "EXTRA SMALL", 'PEWEE']
+
+    row_names = list(
+        RowObjects.objects
+        .filter(form_object=table)
+        .values_list('row_name', flat=True)
+    )
+    
     reject_table = {}
 
-    for field in reject_fields:
+    for field in row_names:
         for line in lines:
             if field == line["text"].strip().upper():
                 field_y = line["center"][1]
-                print(f"{field_y} {field}")
+                #print(f"{field_y} {field}")
                 same_row = [l for l in lines if abs(l["center"][1] - field_y) < 10]
+                print(same_row)
+                print()
                 field_values = {}
-                for col in reject_headers:
+                #print(same_row)
+                for col in header_names:
                     col_x = header_x_positions.get(col)
+                    #print(col_x)
                     if col_x is None:
                         continue
                     closest = min(same_row, key=lambda l: abs(l["center"][0] - col_x), default=None)
+                    #print(closest)
                     dist = abs(closest["center"][0] - col_x) if closest else float("inf")
-                    field_values[col] = closest["text"] if closest and dist < 10 else "N/A"
+                    field_values[col] = closest["text"] if closest and dist < 90 else "N/A"
                 reject_table[field] = field_values
                 break
 
-    # === BREAKAGES ===
-    breakages_anchor_y = None
-    for line in lines:
-        if line["text"].strip().upper() == "BREAKAGES":
-            _, breakages_anchor_y = line["center"]
-            break
 
-    breakages_headers = ["CONVEYOR", "ACCUMULATOR", "MULTI-DRUM", "CANDLING", "TRANSFER", "BRIDGE", "DROP SET", "TAKE AWAY", "BY-PASS", "TOTAL"]
-    breakage_header_x_positions = {}
-    if breakages_anchor_y is not None:
-        for line in lines:
-            text = line["text"].strip().upper()
-            cx, cy = line["center"]
-            if text in breakages_headers and abs(cy - breakages_anchor_y) < 100:
-                breakage_header_x_positions[text] = cx
-
-    breakages_fields = ["HAIRLINES", "GOOD CRACKED", "SEMI CRACKED", "OVER CRACKED", "SHELL ONLY"]
-    breakages_table = {}
-
-    for field in breakages_fields:
-        found_line = None
-        for i, line in enumerate(lines):
-            text1 = line["text"].strip().upper()
-            if i + 1 < len(lines):
-                next_line = lines[i + 1]
-                text2 = next_line["text"].strip().upper()
-                x1, y1 = line["center"]
-                x2, y2 = next_line["center"]
-                if abs(x1 - x2) < 20 and 0 < abs(y2 - y1) < 20:
-                    combined = f"{text1} {text2}"
-                    if field == combined:
-                        found_line = {"text": combined, "center": ((x1 + x2) / 2, (y1 + y2) / 2)}
-                        break
-            if text1 == field:
-                found_line = line
-                break
-
-        if not found_line:
-            continue
-
-        field_y = found_line["center"][1]
-        same_row = [l for l in lines if abs(l["center"][1] - field_y) < 10]
-        field_values = {}
-        for col in breakages_headers:
-            col_x = breakage_header_x_positions.get(col)
-            if col_x is None:
-                continue
-            closest = min(same_row, key=lambda l: abs(l["center"][0] - col_x), default=None)
-            dist = abs(closest["center"][0] - col_x) if closest else float("inf")
-            field_values[col] = closest["text"] if closest and dist < 10 else "N/A"
-        breakages_table[field] = field_values
 
     # ✅ Return All Extracted Info as JSON
     return JsonResponse({
-        "collected_good_eggs": label_value_pairs,
-        "extra_totals": extra_totals,
-        "reject_eggs": reject_table,
-        "breakages": breakages_table
+
+        "extracted_totals": extra_totals,
+        "extracted_table": reject_table,
+
     }, json_dumps_params={"indent": 2})
 
 
@@ -226,8 +153,7 @@ def quantity_graded_eggs(request):
     y_tolerance = 10
 
     for line in lines:
-        print(line)
-        print()
+
         label = line["text"].upper()
         if label in headers:
             label_x, label_y = line["center"]
@@ -245,3 +171,58 @@ def quantity_graded_eggs(request):
                 results[label] = None
 
     return JsonResponse(results)
+
+
+
+
+def get_center(bbox):
+    xs = [p["x"] for p in bbox]
+    ys = [p["y"] for p in bbox]
+    return (sum(xs) / 4, sum(ys) / 4)
+
+def extract_table_rows_from_file(request):
+    with open("main/samp4json.json") as f:
+        ocr_data = json.load(f)
+
+    # Step 1: Flatten all lines and compute center
+    lines = []
+    for block in ocr_data["readResult"]["blocks"]:
+        for line in block["lines"]:
+            center = get_center(line["boundingPolygon"])
+            lines.append({
+                "text": line["text"].strip(),
+                "center": center,
+                "bbox": line["boundingPolygon"]
+            })
+
+    # Step 2: Locate "COLLECTED GOOD EGGS" header and determine reference y position and x range
+    header = next((line for line in lines if "COLLECTED GOOD EGGS" in line["text"].upper()), None)
+    if not header:
+        print("Header 'COLLECTED GOOD EGGS' not found.")
+        return []
+
+    _, header_y = header["center"]
+    column_lines = [line for line in lines if line["center"][1] > header_y + 10]  # +10 to skip header itself
+
+    # Step 3: Sort by y-center to group rows
+    from collections import defaultdict
+    rows_dict = defaultdict(list)
+    for line in column_lines:
+        y_bucket = round(line["center"][1] / 10) * 10  # bucket by y to group rows
+        rows_dict[y_bucket].append(line)
+
+    sorted_rows = []
+    for y in sorted(rows_dict):
+        row_items = sorted(rows_dict[y], key=lambda l: l["center"][0])  # sort by x (left to right)
+        if len(row_items) >= 3:
+            sorted_rows.append({
+                "size": row_items[0]["text"],
+                "description": row_items[1]["text"],
+                "total": row_items[2]["text"]
+            })
+
+    # Step 4: Output
+    for row in sorted_rows:
+        print(row)
+
+    return sorted_rows
