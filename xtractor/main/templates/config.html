@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}Template Configuration{% endblock %}
+
+{% block content %}
+<main class="container-fluid">
+    <div class="bg-light p-5 rounded">
+        <h2>Template Configuration</h2>
+        <div class="d-inline-flex gap-1 mb-2">
+            <button id="add_grid_btn" type="button" class="btn btn-sm btn-outline-dark" data-bs-toggle="modal"
+                data-bs-target="#add_grid_modal">Grid <i class="fa-solid fa-circle-plus"></i></button>
+            <button id="add_field_btn" type="button" class="btn btn-sm btn-outline-dark">Field <i
+                    class="fa-solid fa-circle-plus"></i></button>
+        </div>
+        <div class="container-grid">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <div class="row g-3 align-items-center">
+                            <div class="col-auto">
+                                <label for="gridtitle" class="col-form-label">Grid Title</label>
+                            </div>
+                            <div class="col-auto">
+                                <input type="text" class="form-control" id="gridtitle" value="Collected Good Eggs"
+                                    placeholder="input grid title">
+                            </div>
+                            <div class="col-auto">
+                                <button id="add_grid_btn" type="button" class="btn btn-outline-dark">Add Header
+                                    Column <i class="fa-solid fa-circle-plus"></i></button>
+                            </div>
+                            <div class="col-auto">
+                                <button id="add_grid_btn" type="button" class="btn btn-outline-dark">Add Header
+                                    Field <i class="fa-solid fa-circle-plus"></i></button>
+                            </div>
+                        </div>
+
+                        <p class="card-text">Preview : </p>
+
+                        <div class="container-fluid content-grid">
+                            <div class="row border border-dark border-1">
+                                <div class="col border border-dark border-1">Collected Good Eggs</div>
+                            </div>
+                            <div class="row border border-dark border-1">
+                                <div class="col border border-dark border-1">
+                                    SIZE
+                                </div>
+                                <div class="col border border-dark border-1">
+                                    QUANTITY
+                                </div>
+                                <div class="col border border-dark border-1">
+                                    TOTAL
+                                </div>
+                            </div>
+                        </div>
+                    </h5>
+
+                    <h6 class="card-subtitle mb-2 text-body-secondary"></h6>
+                    <p class="card-text"></p>
+                </div>
+
+                <div class="px-3">
+                    <hr>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</main>
+
+
+
+<!-- add table modal -->
+<div class="modal fade" id="add_grid_modal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+    aria-labelledby="add_grid_modalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5" id="add_grid_modalLabel">Add Grid</h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                ...
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary">Understood</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function () {
+    });
+</script>
+{% endblock %}
