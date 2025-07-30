@@ -12,7 +12,7 @@
             <button id="add_field_btn" type="button" class="btn btn-sm btn-outline-dark">Field <i
                     class="fa-solid fa-circle-plus"></i></button>
         </div>
-        <div class="container-grid">
+        <!-- <div class="container-grid">
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title">
@@ -63,7 +63,35 @@
                 </div>
 
             </div>
-        </div>
+        </div> -->
+        <form method="post">
+            {% csrf_token %}
+            <h3>Type Form</h3>
+            {{ typeform.as_p }}
+            <button type="submit" name="submit_TypeForm">Submit Type</button>
+        </form>
+
+        <form method="post">
+            {% csrf_token %}
+            <h3>Form Object</h3>
+            {{ formobjectform.as_p }}
+            <button type="submit" name="submit_FormObject">Submit Form</button>
+        </form>
+
+        <!-- <form method="post">
+            {% csrf_token %}
+            <h3>Type Form</h3>
+            {{ typeform.as_p }}
+            <h3>Form Object</h3>
+            {{ formobjectform.as_p }}
+             <h3>Header Object</h3>
+            {{ headerobjectsform.as_p }}
+             <h3>Row Object</h3>
+            {{ rowobjectsform.as_p }}
+             <h3>Field Object</h3>
+            {{ fieldobjectform.as_p }}
+            <button type="submit">Submit All</button>
+        </form> -->
     </div>
 </main>
 
