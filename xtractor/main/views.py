@@ -63,121 +63,90 @@ def template_config(request):
 
 @csrf_exempt
 def ocr_result_view(request):
-    table_name = "COLLECTED GOOD EGGS"
-    table_name = "COLLECTED REJECT EGGS"
 
-    table = FormObject.objects.get(title=table_name)
-    print(table)
-    with open("main/samp3json.json") as f:
-        ocr_data = json.load(f)
+    table_name = ["COLLECTED GOOD EGGS", "COLLECTED REJECT EGGS"]
+    for t in table_name:
+        #table_name = "COLLECTED REJECT EGGS"
 
-    def get_center(bbox):
-        xs = [p["x"] for p in bbox]
-        ys = [p["y"] for p in bbox]
-        return (sum(xs) / 4, sum(ys) / 4)
+        table = FormObject.objects.get(title=t)
+        print(table)
+        with open("main/samp3json.json") as f:
+            ocr_data = json.load(f)
 
-    lines = []
-    for block in ocr_data["readResult"]["blocks"]:
-        for line in block["lines"]:
-            center = get_center(line["boundingPolygon"])
-            lines.append({
-                "text": line["text"],
-                "center": center,
-                "bbox": line["boundingPolygon"]
-            })
+        def get_center(bbox):
+            xs = [p["x"] for p in bbox]
+            ys = [p["y"] for p in bbox]
+            return (sum(xs) / 4, sum(ys) / 4)
 
-    # === Step 1: Locate "COLLECTED GOOD EGGS" ===
+        lines = []
+        for block in ocr_data["readResult"]["blocks"]:
+            for line in block["lines"]:
+                center = get_center(line["boundingPolygon"])
+                lines.append({
+                    "text": line["text"],
+                    "center": center,
+                    "bbox": line["boundingPolygon"]
+                })
 
 
-    # === EXTRA TOTALS ===
-    TOTAL_COUNT_TO_FIND = ['MOBA COUNT:', 'ACTUAL COUNT:', 'GOOD EGGS:', 'SD EGGS:', 'REJECT EGGS:', "DATE:",  "START:", "END:", "HOUSE/S:", "SPEED:"]
-    extra_totals = {}
-
-    for TOTAL_COUNT in TOTAL_COUNT_TO_FIND:
+        reject_anchor_y = None
         for line in lines:
-            text_upper = line["text"].strip().upper()
-            if text_upper.startswith(TOTAL_COUNT):
-                rest = text_upper[len(TOTAL_COUNT):].strip()
-                if rest:
-                    extra_totals[TOTAL_COUNT] = rest
-                else:
-                    label_x, label_y = line["center"]
-                    candidates = [c for c in lines if c != line and c["center"][0] > label_x and abs(c["center"][1] - label_y) < 10]
-                    if candidates:
-                        candidates.sort(key=lambda c: c["center"][0])
-                        extra_totals[TOTAL_COUNT] = candidates[0]["text"]
-                    else:
-                        extra_totals[TOTAL_COUNT] = "N/A"
+
+            if line["text"].strip().upper() == table.title:
+                _, reject_anchor_y = line["center"]
                 break
 
-    # === COLLECTED REJECT EGGS ===
-    reject_anchor_y = None
-    for line in lines:
-        print(line)
-        print()
-        if line["text"].strip().upper() == table.title:
-            _, reject_anchor_y = line["center"]
-            break
+        #header_names = ["QUANTITY", "TOTAL"]
 
-    #header_names = ["QUANTITY", "TOTAL"]
-    header_names = list(
-        HeaderObjects.objects
-        .filter(form_object=table)
-        .exclude(header_type="label")
-        .values_list('header_name', flat=True)
-    )
+        header_names = list(
+            HeaderObjects.objects
+            .filter(form_object=table)
+            .exclude(header_type="label")
+            .values_list('header_name', flat=True)
+        )
 
-    header_x_positions = {}
-    if reject_anchor_y is not None:
-        for line in lines:
+        header_x_positions = {}
+        if reject_anchor_y is not None:
+            for line in lines:
 
-            text = line["text"].strip().upper()
-            cx, cy = line["center"]
-            if text in header_names and abs(cy - reject_anchor_y) < 100:
-                header_x_positions[text] = cx
+                text = line["text"].strip().upper()
+                cx, cy = line["center"]
+                if text in header_names and abs(cy - reject_anchor_y) < 100:
+                    header_x_positions[text] = cx
 
-    row_names = ['SUPER JUMBO', 'JUMBO', 'EXTRA LARGE', 'LARGE', 'MEDIUM', 'SMALL', "EXTRA SMALL", 'PEWEE']
+        #row_names = ['SUPER JUMBO', 'JUMBO', 'EXTRA LARGE', 'LARGE', 'MEDIUM', 'SMALL', "EXTRA SMALL", 'PEWEE']
 
-    row_names = list(
-        RowObjects.objects
-        .filter(form_object=table)
-        .values_list('row_name', flat=True)
-    )
-    
-    reject_table = {}
+        row_names = list(
+            RowObjects.objects
+            .filter(form_object=table)
+            .values_list('row_name', flat=True)
+        )
 
-    for field in row_names:
-        for line in lines:
-            if field == line["text"].strip().upper():
-                field_y = line["center"][1]
-                #print(f"{field_y} {field}")
-                same_row = [l for l in lines if abs(l["center"][1] - field_y) < 10]
-                print(same_row)
-                print()
-                field_values = {}
-                #print(same_row)
-                for col in header_names:
-                    col_x = header_x_positions.get(col)
-                    #print(col_x)
-                    if col_x is None:
-                        continue
-                    closest = min(same_row, key=lambda l: abs(l["center"][0] - col_x), default=None)
-                    #print(closest)
-                    dist = abs(closest["center"][0] - col_x) if closest else float("inf")
-                    field_values[col] = closest["text"] if closest and dist < 90 else "N/A"
-                reject_table[field] = field_values
-                break
+        reject_table = {}
 
+        for field in row_names:
+            for line in lines:
+                if field == line["text"].strip().upper():
+                    field_y = line["center"][1]
+                    same_row = [l for l in lines if abs(l["center"][1] - field_y) < 10]
 
+                    field_values = {}
 
-    # ✅ Return All Extracted Info as JSON
-    return JsonResponse({
+                    for col in header_names:
+                        col_x = header_x_positions.get(col)
+                        #print(col_x)
+                        if col_x is None:
+                            continue
+                        closest = min(same_row, key=lambda l: abs(l["center"][0] - col_x), default=None)
+                        #print(closest)
+                        dist = abs(closest["center"][0] - col_x) if closest else float("inf")
+                        field_values[col] = closest["text"] if closest and dist < 90 else "N/A"
+                    reject_table[field] = field_values
+                    break
 
-        "extracted_totals": extra_totals,
-        "extracted_table": reject_table,
-
-    }, json_dumps_params={"indent": 2})
-
+        return JsonResponse({
+            "extracted_table": reject_table,
+        }, json_dumps_params={"indent": 2})
 
 
 
@@ -206,7 +175,6 @@ def quantity_graded_eggs(request):
                 "bbox": line["boundingPolygon"]
             })
 
-    # Normalize and upper-case the headers
     results = {}
     y_tolerance = 10
 
@@ -216,7 +184,7 @@ def quantity_graded_eggs(request):
         if label in headers:
             label_x, label_y = line["center"]
 
-            # Find closest item to the right and roughly same y
+            #find closest item to the right and roughly same y
             right_candidates = [
                 l for l in lines
                 if l["center"][0] > label_x and abs(l["center"][1] - label_y) <= y_tolerance
@@ -242,7 +210,7 @@ def extract_table_rows_from_file(request):
     with open("main/samp4json.json") as f:
         ocr_data = json.load(f)
 
-    # Step 1: Flatten all lines and compute center
+
     lines = []
     for block in ocr_data["readResult"]["blocks"]:
         for line in block["lines"]:
@@ -253,16 +221,15 @@ def extract_table_rows_from_file(request):
                 "bbox": line["boundingPolygon"]
             })
 
-    # Step 2: Locate "COLLECTED GOOD EGGS" header and determine reference y position and x range
+
     header = next((line for line in lines if "COLLECTED GOOD EGGS" in line["text"].upper()), None)
     if not header:
         print("Header 'COLLECTED GOOD EGGS' not found.")
         return []
 
     _, header_y = header["center"]
-    column_lines = [line for line in lines if line["center"][1] > header_y + 10]  # +10 to skip header itself
+    column_lines = [line for line in lines if line["center"][1] > header_y + 10]
 
-    # Step 3: Sort by y-center to group rows
     from collections import defaultdict
     rows_dict = defaultdict(list)
     for line in column_lines:
@@ -279,13 +246,85 @@ def extract_table_rows_from_file(request):
                 "total": row_items[2]["text"]
             })
 
-    # Step 4: Output
+
     for row in sorted_rows:
         print(row)
 
     return sorted_rows
 
+#extract_table_by_headers2
+
+def extract_table_by_headers2():
+    table_name = "EPP PRODUCTION LOT-BATCHCODE REPORT"
+
+    expected_headers = ["PROD'N DATE", "HOUSE NUMBER", "MOTHER SKU", "INPUT (PCS)", "TRANSFORMATION"]
+    def get_center(bbox):
+        xs = [p["x"] for p in bbox]
+        ys = [p["y"] for p in bbox]
+        return (sum(xs) / 4, sum(ys) / 4)
+
+    # Preprocess lines
+
+    with open("main/samp5.json") as f:
+        ocr_data = json.load(f)
+
+    lines = []
+    for block in ocr_data["readResult"]["blocks"]:
+        for line in block["lines"]:
+            center = get_center(line["boundingPolygon"])
+            lines.append({
+                "text": line["text"].strip(),
+                "center": center,
+                "bbox": line["boundingPolygon"]
+            })
+
+    table_title = table_name.strip().upper()
+    expected_headers = [h.strip().upper() for h in expected_headers]
 
 
+    anchor_y = None
+    for line in lines:
+        if line["text"].strip().upper() == table_title:
+            _, anchor_y = line["center"]
+            break
+    if anchor_y is None:
+        return {"error": "Table title not found"}
 
+
+    headers_in_doc = {}
+    for line in lines:
+        text = line["text"].strip().upper()
+        cx, cy = line["center"]
+        if abs(cy - anchor_y) < 100 and text in expected_headers:
+            headers_in_doc[text] = cx
+
+    if len(headers_in_doc) < len(expected_headers):
+        return {"error": "Some headers not found below title"}
+
+
+    extracted_rows = []
+    row_lines = [line for line in lines if line["center"][1] > anchor_y + 100]
+
+    used_rows = set()
+    for line in row_lines:
+        row_y = line["center"][1]
+        if any(abs(row_y - y) < 10 for y in used_rows):
+            continue
+        same_row = [l for l in row_lines if abs(l["center"][1] - row_y) < 10]
+        used_rows.add(row_y)
+
+        row_data = {}
+        for header in expected_headers:
+            col_x = headers_in_doc.get(header)
+            if col_x is None:
+                row_data[header] = "N/A"
+                continue
+            closest = min(same_row, key=lambda l: abs(l["center"][0] - col_x), default=None)
+            dist = abs(closest["center"][0] - col_x) if closest else float("inf")
+            row_data[header] = closest["text"] if closest and dist < 20 else "N/A"
+
+
+        extracted_rows.append(row_data)
+
+    return extracted_rows
 
