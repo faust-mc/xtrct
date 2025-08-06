@@ -1,24 +1,80 @@
-{% load django_bootstrap5 %}
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
 
-<head>
-    <meta charset="UTF-8">
-    <title>Bootstrap 5 Example</title>
-    {% bootstrap_css %}
-    {% bootstrap_javascript %}
-</head>
+{% load static %}
 
-<body class="p-5">
-    <div class="container">
-        <div class="mb-3"> <!-- wrapper start -->
-            <label for="name" class="form-label">Upload PDF File</label> <!-- label -->
-            <input type="text" class="form-control" id="name" aria-describedby="nameHelp"> <!-- field -->
-            <div id="nameHelp" class="form-text">An alias is fine.</div> <!-- help text -->
-            <div class="valid-feedback">Looks good!</div> <!-- validation text -->
+{% block title %}Homepage{% endblock %}
+
+{% block styles %}
+<style>
+    .card-hover {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .card-hover:hover {
+        transform: scale(1.03);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+    }
+
+    .card-icon-top-right {
+        position: relative;
+        overflow: hidden;
+    }
+
+    .card-icon-top-right .fa-icon {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        font-size: 2.5rem;
+        color: rgba(0, 0, 0, 0.1);
+        opacity: 0.4;
+        /* Light faded icon */
+        pointer-events: none;
+    }
+</style>
+
+{% endblock %}
+
+
+{% block content %}
+<main class="container py-4">
+    <div class="row row-cols-1 row-cols-md-4 g-4">
+        <div class="col">
+            <a href="" class="card card-icon-top-right card-hover h-100 card-link text-decoration-none">
+                <i class="fas fa-regular fa-file-excel fa-icon text-success"></i>
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">Text Extractor</h5>
+                    <p class="card-text">Some quick example text to build on the card title.</p>
+                    <span class="btn btn-outline-primary mt-auto w-100">Open</span>
+                </div>
+            </a>
         </div>
+        <div class="col">
+            <a href="" class="card card-icon-top-right card-hover h-100 card-link text-decoration-none">
+                <i class="fas fa-regular fa-file-lines fa-icon text-info"></i>
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">Template Configuration</h5>
+                    <p class="card-text">Some quick example text to build on the card title.</p>
+                    <span class="btn btn-outline-primary mt-auto w-100">Open</span>
+                </div>
+            </a>
+        </div>
+        <div class="col">
+            <a href="" class="card card-icon-top-right card-hover h-100 card-link text-decoration-none">
+                <i class="fas fa-regular fa-file-excel fa-icon text-info"></i>
+
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">Extracted Files</h5>
+                    <p class="card-text">Another card with supporting content.</p>
+                    <span class="btn btn-outline-primary mt-auto w-100">Open</span>
+                </div>
+            </a>
+        </div>
+        <!-- Add more cards as needed -->
     </div>
+</main>
 
-</body>
+{% endblock %}
 
-</html>
+{% block scripts %}
+
+{% endblock %}

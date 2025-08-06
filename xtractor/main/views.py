@@ -6,7 +6,16 @@ from .forms import TypeForm, FormObjectForm, HeaderObjectsForm, RowObjectsForm, 
 import json
 
 
+def login(request):
+    
+    return render(request, 'login.html')
 
+
+def index(request):
+    
+    return render(request, 'index.html')
+    
+    
 
 def template_config(request):
     # if this is a POST request we need to process the form data
@@ -17,7 +26,6 @@ def template_config(request):
         headerobjectsform = HeaderObjectsForm(request.POST, prefix='headerobjects')
         rowobjectsform = RowObjectsForm(request.POST, prefix='rowobjects')
         fieldobjectform = FieldObjectForm(request.POST, prefix='fieldobject')
-        
         
         if 'submit_TypeForm' in request.POST:
             if(typeform.is_valid()):

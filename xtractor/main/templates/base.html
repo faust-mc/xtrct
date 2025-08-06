@@ -7,42 +7,62 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}Home{% endblock %}</title>
-    {% bootstrap_css %}
-    {% bootstrap_javascript %}
+
+    {% bootstrap_css %} {% bootstrap_javascript %}
 
     <link rel="stylesheet" href="{% static 'fontawesome/css/all.min.css' %}">
     <link rel="stylesheet" href="{% static 'toastr/toastr.min.css' %}">
     <link rel="stylesheet" href="{% static 'style.css' %}">
-
+    {% block styles %}
+    <style>
+        body {
+            min-height: 75rem;
+            padding-top: 4.5rem;
+        }
+    </style>
+    {% endblock %}
 </head>
 
 <body>
-    <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="#">Fixed navbar</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse"
-                aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarCollapse">
-                <ul class="navbar-nav me-auto mb-2 mb-md-0">
-                    <li class="nav-item">
-                        <a class="nav-link active" aria-current="page" href="#">Home</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#">Link</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link disabled" href="#" tabindex="-1" aria-disabled="true">Disabled</a>
-                    </li>
-                </ul>
-                <form class="d-flex">
-                    <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search">
-                    <button class="btn btn-outline-success" type="submit">Search</button>
-                </form>
-            </div>
+    {% block navbar %}
+    <header class="py-3 mb-3 border-bottom">
+    <div class="container-fluid d-flex justify-content-between align-items-center">
+        <!-- Left: Nav Dropdown -->
+        <div class="dropdown">
+            <a href="#"
+                class="d-flex align-items-center link-dark text-decoration-none dropdown-toggle"
+                id="dropdownNavLink" data-bs-toggle="dropdown" aria-expanded="false">
+                <svg class="bi me-2" width="40" height="32">
+                    <use xlink:href="#bootstrap" />
+                </svg>
+                Menu
+            </a>
+            <ul class="dropdown-menu text-small shadow" aria-labelledby="dropdownNavLink">
+                <li><a class="dropdown-item active" href="#" aria-current="page">Dashboard</a></li>
+                <li><a class="dropdown-item" href="#">Template Configuration</a></li>
+                <li><a class="dropdown-item" href="#">Text Extractor</a></li>
+                <li><a class="dropdown-item" href="#">Extracted Files</a></li>
+            </ul>
         </div>
-    </nav>
+
+        <!-- Right: User Avatar Dropdown -->
+        <div class="dropdown">
+            <a href="#" class="d-block link-dark text-decoration-none dropdown-toggle" id="dropdownUser2"
+                data-bs-toggle="dropdown" aria-expanded="false">
+                <img src="https://github.com/mdo.png" alt="User" width="32" height="32" class="rounded-circle">
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end text-small shadow" aria-labelledby="dropdownUser2">
+                <li><a class="dropdown-item" href="#">New project...</a></li>
+                <li><a class="dropdown-item" href="#">Settings</a></li>
+                <li><a class="dropdown-item" href="#">Profile</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="#">Sign out</a></li>
+            </ul>
+        </div>
+    </div>
+</header>
+
+    {% endblock %}
 
     {% block content %}
     <main class="container-fluid">
