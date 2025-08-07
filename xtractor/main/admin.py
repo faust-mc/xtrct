@@ -1,6 +1,6 @@
 from django.contrib import admin
-from .models import Type, FormObject, HeaderObjects, RowObjects, FieldObject
+from .models import ComponentType, FormObject, HeaderObjects, RowObjects, FieldObject, FormName
 
 
-admin.site.register([Type, FormObject, HeaderObjects, RowObjects, FieldObject])
+admin.site.register([ComponentType, FormObject, HeaderObjects, RowObjects, FieldObject, FormName])
 
