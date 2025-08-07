@@ -281,18 +281,18 @@ def extract_table_rows_from_file(request):
 
 #extract_table_by_headers2
 def extract_table_by_headers2(request):
-    table_name = "Business Name/Style ANDOKS LITSON CORPORATION Payment Terms: July 07, 2025"
+    # table_name = "Business Name/Style ANDOKS LITSON CORPORATION Payment Terms: July 07, 2025"
     # table_name = "EPP PRODUCTION LOT-BATCHCODE REPORT"
-    # table_name = "Customer Id: $09-145"
+    table_name = "Customer Id: $09-145"
 
-    expected_headers = ["Part Number", "Description", "UOM", "Delivered", "Delivered"]
-    # expected_headers = ["Part Number", "Description", "Transferred", "\"Transferred", "Received", "Returned", "Retumed"]
+    # expected_headers = ["Part Number", "Description", "UOM", "Delivered"]
+    expected_headers = ["Part Number", "Description", "Transferred", "\"Transferred", "Received", "Returned", "Retumed"]
     # expected_headers = ["PACKER","PROD'N DATE", "HOUSE NUMBER", "MOTHER SKU", "INPUT (PCS)", "TRANSFORMATION", "TOTAL OTY"]
 
     # Preprocess lines
 
-    # with open("main/samp9.json") as f:
-    with open("main/samp8b.json") as f:
+    with open("main/samp9.json") as f:
+    # with open("main/samp8b.json") as f:
     # with open("main/samp5.json") as f:
         ocr_data = json.load(f)
 
