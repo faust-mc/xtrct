@@ -1,262 +1,102 @@
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseRedirect
 from django.views.decorators.csrf import csrf_exempt
+
+from django.shortcuts import render
+from .models import  Type, FormObject, HeaderObjects, RowObjects, FieldObject
+from .forms import TypeForm, FormObjectForm, HeaderObjectsForm, RowObjectsForm, FieldObjectForm
 import json
-from .models import  ComponentType, FormObject, HeaderObjects, RowObjects, FieldObject, FormName
-import math
 
-
-
-
-def is_same_column_1(header_bbox, cell_bbox, x_tolerance=10):
-    # Get left and right boundaries for header and cell
-    header_xs = [p["x"] for p in header_bbox]
-    cell_xs = [p["x"] for p in cell_bbox]
-
-    header_left = min(header_xs)
-    header_right = max(header_xs)
-
-    cell_left = min(cell_xs)
-    cell_right = max(cell_xs)
-
-    # Check horizontal overlap
-    return not (cell_right < header_left - x_tolerance or cell_left > header_right + x_tolerance)
-
-
-def is_same_column(header_bbox, cell_bbox):
-    header_xs = [p["x"] for p in header_bbox]
-    cell_xs = [p["x"] for p in cell_bbox]
-
-    header_left = min(header_xs)
-    header_right = max(header_xs)
-
-    cell_left = min(cell_xs)
-    cell_right = max(cell_xs)
-
-    # Overlap condition (any horizontal overlap)
-    overlaps = not (cell_right < header_left or cell_left > header_right)
-
-    # Fully contained condition (cell box entirely inside header box)
-    fully_within = (cell_left >= header_left and cell_right <= header_right)
-
-    # Return True if either overlaps or fully contained
-    return overlaps or fully_within
-
-
-
-
-
-
-def get_center(bbox):
-    xs = [p["x"] for p in bbox]
-    ys = [p["y"] for p in bbox]
-    return (sum(xs) / 4, sum(ys) / 4)
-
-
-
-#THIS IS NEWER VERSION BUT NEEDS IMPROVEMENT
-# @csrf_exempt
-# def ocr_result_view(request):
-#     form_name = FormName.objects.get(name="Samp")
-#     print(form_name)
-#     with open("main/samp6.json") as f:
-#     # with open("main/samp6.json") as f:
-#         ocr_data = json.load(f)
-#     lines = [] #line of texts extracted
-#     for block in ocr_data["readResult"]["blocks"]:
-#         for line in block["lines"]:
-#             center = get_center(line["boundingPolygon"])
-#             lines.append({
-#                 "text": line["text"],
-#                 "center": center,
-#                 "bbox": line["boundingPolygon"]
-#             })
-
-#     # === EXTRA TOTALS ===
+def login(request):
     
-#     fields_to_find = list(
-#         FormObject.objects
-#         .filter(form_name=form_name, type=2)
-#         .values_list('title', flat=True)  # change 'title' to the correct field name
-#     )
+    return render(request, 'login.html')
 
-#     extra_totals = {}
 
-#     for field in fields_to_find:
-#         reject_anchor_y = None
-#         for line in lines:
-#             text_upper = line["text"].strip().upper()
-#             if text_upper.startswith(field):
-#                 rest = text_upper[len(field):].strip()
-#                 if rest:
-#                     extra_totals[field] = rest
-#                 else:
-#                     label_x, label_y = line["center"]
-#                     candidates = [c for c in lines if c != line and c["center"][0] > label_x and abs(c["center"][1] - label_y) < 10]
-#                     if candidates:
-#                         candidates.sort(key=lambda c: c["center"][0])
-#                         extra_totals[field] = candidates[0]["text"]
-#                     else:
-#                         extra_totals[field] = "N/A"
-#                 break
+
+def index(request):
     
-#     tables = []
-#     table_name = list(
-#         FormObject.objects
-#         .filter(form_name=form_name, type=1)
-#         .values_list('title', flat=True)  # change 'title' to the correct field name
-#     )
-#     print(table_name)
-#     print()
-#     # table_name = ["05-01-25"]
-#     # table_name = ["04- 30 -25"]
-    
-#     # table_name = ["COLLECTED GOOD EGGS"]
-#     for t in table_name:
-#         #table_name = "COLLECTED REJECT EGGS"
+    return render(request, 'index.html')
 
-#         table = FormObject.objects.get(title=t)
-     
+    
+    
+def template_config(request):
+    
+    return render(request, 'config.html')
+
+
+
+def extractor(request):
+    
+    return render(request, 'extractor.html')
+
+
+
+def submit_form_ajax(request):
+    if request.method == 'POST':
+            field_list = request.POST.getlist('field_list[]')
+            form_title = request.POST.get('form_title')
+            
+            table_data = dict(request.POST)  # convert QueryDict to dict for easier view
+
+            # print("Form Title:", form_title)
+            # print("Field List:", field_list)
+            # print("Full Data:", table_data)
+            
+            # Process the data
+            return JsonResponse({"Form Title" : form_title,"Field List": field_list,"Table Data" : table_data})
         
-
-#         print(table)
-#         reject_anchor_y = None
-
-           
-#         for line in lines:
-
-#             if line["text"].strip() == table.title:
-#                 reject_anchor_x, reject_anchor_y = line["center"]
-#                 break
-
-#         #header_names = ["QUANTITY", "TOTAL"]
-
-#         header_names = list(
-#             HeaderObjects.objects
-#             .filter(form_object=table)
-#             .exclude(header_type="label")
-#             .values_list('header_name', flat=True)
-#         )
-
-#         header_x_positions = {}
-#         closest_headers = {}  # <-- restore this so later code works
-
-#         if reject_anchor_y is not None:
-#             # Normalize expected names once and keep a map to original casing
-#             header_map = {h.strip().upper(): h for h in header_names}
-#             expected_set = set(header_map.keys())
-
-#             # 1) Collect candidates below the title
-#             MIN_GAP = 2
-#             candidates = []
-#             for line in lines:
-#                 text_u = line["text"].strip().upper()
-#                 cx, cy = line["center"]
-#                 if cy > reject_anchor_y + MIN_GAP and text_u in expected_set:
-#                     candidates.append({
-#                         "text_u": text_u,
-#                         "cx": cx,
-#                         "cy": cy,
-#                         "line": line
-#                     })
-
-#             if candidates:
-#                 # 2) Cluster by Y
-#                 Y_TOL = 12
-#                 candidates.sort(key=lambda d: d["cy"])
-#                 clusters = []
-#                 cur = [candidates[0]]
-#                 for cand in candidates[1:]:
-#                     if abs(cand["cy"] - cur[-1]["cy"]) <= Y_TOL:
-#                         cur.append(cand)
-#                     else:
-#                         clusters.append(cur)
-#                         cur = [cand]
-#                 clusters.append(cur)
-
-#                 # 3) Pick best cluster
-#                 def cluster_score(cluster):
-#                     uniq = {c["text_u"] for c in cluster}
-#                     min_cy = min(c["cy"] for c in cluster)
-#                     return (len(uniq), -min_cy)
-
-#                 best_cluster = max(clusters, key=cluster_score)
-
-#                 # 4) Build both header_x_positions and closest_headers
-#                 import statistics
-#                 cluster_median_y = statistics.median(c["cy"] for c in best_cluster)
-#                 for h_upper in expected_set:
-#                     options = [c for c in best_cluster if c["text_u"] == h_upper]
-#                     if not options:
-#                         continue
-#                     chosen = min(options, key=lambda c: (abs(c["cy"] - cluster_median_y), c["cx"]))
-#                     original_name = header_map[h_upper]
-#                     header_x_positions[original_name] = chosen["cx"]
-#                     closest_headers[original_name] = chosen  # <-- store full info for later bbox matching
-
-                
+            return JsonResponse({'status': 'success', 'message': 'Valid request method'})
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
 
 
-       
 
-#         #row_names = ['SUPER JUMBO', 'JUMBO', 'EXTRA LARGE', 'LARGE', 'MEDIUM', 'SMALL', "EXTRA SMALL", 'PEWEE']
+def sample(request):
+    
+    return render(request, 'sample.html')
 
-#         row_names = list(
-#             RowObjects.objects
-#             .filter(form_object=table)
-#             .values_list('row_name', flat=True)
-#         )
+# def template_config(request):
+#     # if this is a POST request we need to process the form data
+#     if request.method == "POST":
+#         # create a form instance and populate it with data from the request:
+#         typeform = TypeForm(request.POST, prefix='type')
+#         formobjectform = FormObjectForm(request.POST, prefix='formobject')
+#         headerobjectsform = HeaderObjectsForm(request.POST, prefix='headerobjects')
+#         rowobjectsform = RowObjectsForm(request.POST, prefix='rowobjects')
+#         fieldobjectform = FieldObjectForm(request.POST, prefix='fieldobject')
+        
+#         if 'submit_TypeForm' in request.POST:
+#             if(typeform.is_valid()):
+#                 #process type form
+#                 type = typeform.save(commit=False) # Don't save yet
+#                 typeform.save()  # Save type                
+#         elif 'submit_FormObject' in request.POST:
+#             if(formobjectform.is_valid()):
+#                 #process form object
+#                 formobject = formobjectform.save()  # Save form   
+#         elif 'submit_HeaderObjects' in request.POST:    
+#             if(headerobjectsform.is_valid()):
+#                 #process form object 
+#                 headerobjects = headerobjectsform.save()  # Save header   
+#         elif 'submit_RowObjects' in request.POST:    
+#             if(rowobjectsform.is_valid()):   
+#                 #process form object
+#                 rowobjects = rowobjectsform.save()  # Save row  
+#         elif 'submit_FieldObject' in request.POST:    
+#             if(fieldobjectform.is_valid()):   
+#                 #process form object 
+#                 fieldobject = fieldobjectform.save()  # Save row  
+#     else :
+#         typeform = TypeForm(prefix='type')
+#         formobjectform = FormObjectForm(prefix='formobject')
+#         headerobjectsform = HeaderObjectsForm(prefix='headerobjects')
+#         rowobjectsform = RowObjectsForm(prefix='rowobjects')
+#         fieldobjectform = FieldObjectForm(prefix='fieldobject')
+   
+#     return render(request, 'config.html', {'typeform': typeform, 'formobjectform': formobjectform,  'headerobjectsform': headerobjectsform,  'rowobjectsform': rowobjectsform,  'fieldobjectform': fieldobjectform})
 
-#         reject_table = {}
 
-#         for field in row_names:
-#             for line in lines:
-#                 if (
-#                     field == line["text"]
-#                     and line["center"][0] < reject_anchor_x  # within 100px horizontally of table name
-#                     and line["center"][1] > reject_anchor_y  # ensure it's below the title
-#                 ):
 
-#                     field_y = line["center"][1]
-#                     label_x = line["center"][0]
-#                     same_row = [l for l in lines if abs(l["center"][1] - field_y) < 15.6 and l["center"][0] > label_x + 5]
+   
 
-                
-#                     # print(same_row)
-#                     field_values = {}
-
-#                     for col in header_names:
-#                         col_x = header_x_positions.get(col)
-#                         if col_x is None:
-#                             print("n/a")
-#                             field_values[col] = "N/A"
-#                             continue
-
-#                         # Get the bbox for this header
-#                         # Get the bbox from the closest matching header (already filtered correctly)
-#                         header_info = closest_headers.get(col)
-#                         if not header_info:
-#                             field_values[col] = "N/A"
-#                             continue
-
-#                         header_bbox = header_info["line"]["bbox"]
-
-                        
-#                         # Find matches within same row that horizontally overlap with the header bbox
-#                         matches = [l for l in same_row if is_same_column(header_bbox, l["bbox"])]
-#                         # print(matches)
-#                         # Choose the one closest in X to the expected header position
-#                         closest = min(matches, key=lambda l: abs(l["center"][0] - col_x), default=None)
-
-#                         field_values[col] = closest["text"] if closest else "N/A"
-
-#                     reject_table[field] = field_values
-#                     break
-               
-#         tables.append({t:reject_table})
-#     return JsonResponse({
-#         "extracted_table": tables,
-#         "extracted_fields": extra_totals
-#     }, json_dumps_params={"indent": 2})
 
 
 
@@ -552,7 +392,6 @@ def extract_table_rows_from_file(request):
 
     return JsonResponse(sorted_rows, safe=False)
 
-
 #extract_table_by_headers2
 # def extract_table_by_headers2(request):
 #     # table_name = "Business Name/Style ANDOKS LITSON CORPORATION Payment Terms: July 07, 2025"
@@ -748,4 +587,7 @@ def extract_table_by_headers2(request):
 
         extracted_rows.append(row_data)
 
-    return JsonResponse(extracted_rows, safe=False)
+
+    return extracted_rows
+
+

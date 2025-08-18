@@ -78,7 +78,7 @@ WSGI_APPLICATION = 'xtractor.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'extractor_db',
+        'NAME': 'xtract_test_db',
         'USER': 'root',
         'PASSWORD': 'root',
         'HOST': '127.0.0.1',  # or 'localhost'
