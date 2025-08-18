@@ -1,7 +1,7 @@
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
-from .models import  ComponentType, FormObject, HeaderObjects, RowObjects, FieldObject
+from .models import  ComponentType, FormObject, HeaderObjects, RowObjects, FieldObject, FormName
 import math
 
 
@@ -32,10 +32,15 @@ def is_same_column(header_bbox, cell_bbox):
     cell_left = min(cell_xs)
     cell_right = max(cell_xs)
 
-    # Check if the cell box overlaps with the header box
-    horizontal_overlap = not (cell_right < header_left or cell_left > header_right)
+    # Overlap condition (any horizontal overlap)
+    overlaps = not (cell_right < header_left or cell_left > header_right)
 
-    return horizontal_overlap
+    # Fully contained condition (cell box entirely inside header box)
+    fully_within = (cell_left >= header_left and cell_right <= header_right)
+
+    # Return True if either overlaps or fully contained
+    return overlaps or fully_within
+
 
 
 
@@ -48,33 +53,280 @@ def get_center(bbox):
 
 
 
+#THIS IS NEWER VERSION BUT NEEDS IMPROVEMENT
+# @csrf_exempt
+# def ocr_result_view(request):
+#     form_name = FormName.objects.get(name="Samp")
+#     print(form_name)
+#     with open("main/samp6.json") as f:
+#     # with open("main/samp6.json") as f:
+#         ocr_data = json.load(f)
+#     lines = [] #line of texts extracted
+#     for block in ocr_data["readResult"]["blocks"]:
+#         for line in block["lines"]:
+#             center = get_center(line["boundingPolygon"])
+#             lines.append({
+#                 "text": line["text"],
+#                 "center": center,
+#                 "bbox": line["boundingPolygon"]
+#             })
+
+#     # === EXTRA TOTALS ===
+    
+#     fields_to_find = list(
+#         FormObject.objects
+#         .filter(form_name=form_name, type=2)
+#         .values_list('title', flat=True)  # change 'title' to the correct field name
+#     )
+
+#     extra_totals = {}
+
+#     for field in fields_to_find:
+#         reject_anchor_y = None
+#         for line in lines:
+#             text_upper = line["text"].strip().upper()
+#             if text_upper.startswith(field):
+#                 rest = text_upper[len(field):].strip()
+#                 if rest:
+#                     extra_totals[field] = rest
+#                 else:
+#                     label_x, label_y = line["center"]
+#                     candidates = [c for c in lines if c != line and c["center"][0] > label_x and abs(c["center"][1] - label_y) < 10]
+#                     if candidates:
+#                         candidates.sort(key=lambda c: c["center"][0])
+#                         extra_totals[field] = candidates[0]["text"]
+#                     else:
+#                         extra_totals[field] = "N/A"
+#                 break
+    
+#     tables = []
+#     table_name = list(
+#         FormObject.objects
+#         .filter(form_name=form_name, type=1)
+#         .values_list('title', flat=True)  # change 'title' to the correct field name
+#     )
+#     print(table_name)
+#     print()
+#     # table_name = ["05-01-25"]
+#     # table_name = ["04- 30 -25"]
+    
+#     # table_name = ["COLLECTED GOOD EGGS"]
+#     for t in table_name:
+#         #table_name = "COLLECTED REJECT EGGS"
+
+#         table = FormObject.objects.get(title=t)
+     
+        
+
+#         print(table)
+#         reject_anchor_y = None
+
+           
+#         for line in lines:
+
+#             if line["text"].strip() == table.title:
+#                 reject_anchor_x, reject_anchor_y = line["center"]
+#                 break
+
+#         #header_names = ["QUANTITY", "TOTAL"]
+
+#         header_names = list(
+#             HeaderObjects.objects
+#             .filter(form_object=table)
+#             .exclude(header_type="label")
+#             .values_list('header_name', flat=True)
+#         )
+
+#         header_x_positions = {}
+#         closest_headers = {}  # <-- restore this so later code works
+
+#         if reject_anchor_y is not None:
+#             # Normalize expected names once and keep a map to original casing
+#             header_map = {h.strip().upper(): h for h in header_names}
+#             expected_set = set(header_map.keys())
+
+#             # 1) Collect candidates below the title
+#             MIN_GAP = 2
+#             candidates = []
+#             for line in lines:
+#                 text_u = line["text"].strip().upper()
+#                 cx, cy = line["center"]
+#                 if cy > reject_anchor_y + MIN_GAP and text_u in expected_set:
+#                     candidates.append({
+#                         "text_u": text_u,
+#                         "cx": cx,
+#                         "cy": cy,
+#                         "line": line
+#                     })
+
+#             if candidates:
+#                 # 2) Cluster by Y
+#                 Y_TOL = 12
+#                 candidates.sort(key=lambda d: d["cy"])
+#                 clusters = []
+#                 cur = [candidates[0]]
+#                 for cand in candidates[1:]:
+#                     if abs(cand["cy"] - cur[-1]["cy"]) <= Y_TOL:
+#                         cur.append(cand)
+#                     else:
+#                         clusters.append(cur)
+#                         cur = [cand]
+#                 clusters.append(cur)
+
+#                 # 3) Pick best cluster
+#                 def cluster_score(cluster):
+#                     uniq = {c["text_u"] for c in cluster}
+#                     min_cy = min(c["cy"] for c in cluster)
+#                     return (len(uniq), -min_cy)
+
+#                 best_cluster = max(clusters, key=cluster_score)
+
+#                 # 4) Build both header_x_positions and closest_headers
+#                 import statistics
+#                 cluster_median_y = statistics.median(c["cy"] for c in best_cluster)
+#                 for h_upper in expected_set:
+#                     options = [c for c in best_cluster if c["text_u"] == h_upper]
+#                     if not options:
+#                         continue
+#                     chosen = min(options, key=lambda c: (abs(c["cy"] - cluster_median_y), c["cx"]))
+#                     original_name = header_map[h_upper]
+#                     header_x_positions[original_name] = chosen["cx"]
+#                     closest_headers[original_name] = chosen  # <-- store full info for later bbox matching
+
+                
+
+
+       
+
+#         #row_names = ['SUPER JUMBO', 'JUMBO', 'EXTRA LARGE', 'LARGE', 'MEDIUM', 'SMALL', "EXTRA SMALL", 'PEWEE']
+
+#         row_names = list(
+#             RowObjects.objects
+#             .filter(form_object=table)
+#             .values_list('row_name', flat=True)
+#         )
+
+#         reject_table = {}
+
+#         for field in row_names:
+#             for line in lines:
+#                 if (
+#                     field == line["text"]
+#                     and line["center"][0] < reject_anchor_x  # within 100px horizontally of table name
+#                     and line["center"][1] > reject_anchor_y  # ensure it's below the title
+#                 ):
+
+#                     field_y = line["center"][1]
+#                     label_x = line["center"][0]
+#                     same_row = [l for l in lines if abs(l["center"][1] - field_y) < 15.6 and l["center"][0] > label_x + 5]
+
+                
+#                     # print(same_row)
+#                     field_values = {}
+
+#                     for col in header_names:
+#                         col_x = header_x_positions.get(col)
+#                         if col_x is None:
+#                             print("n/a")
+#                             field_values[col] = "N/A"
+#                             continue
+
+#                         # Get the bbox for this header
+#                         # Get the bbox from the closest matching header (already filtered correctly)
+#                         header_info = closest_headers.get(col)
+#                         if not header_info:
+#                             field_values[col] = "N/A"
+#                             continue
+
+#                         header_bbox = header_info["line"]["bbox"]
+
+                        
+#                         # Find matches within same row that horizontally overlap with the header bbox
+#                         matches = [l for l in same_row if is_same_column(header_bbox, l["bbox"])]
+#                         # print(matches)
+#                         # Choose the one closest in X to the expected header position
+#                         closest = min(matches, key=lambda l: abs(l["center"][0] - col_x), default=None)
+
+#                         field_values[col] = closest["text"] if closest else "N/A"
+
+#                     reject_table[field] = field_values
+#                     break
+               
+#         tables.append({t:reject_table})
+#     return JsonResponse({
+#         "extracted_table": tables,
+#         "extracted_fields": extra_totals
+#     }, json_dumps_params={"indent": 2})
+
+
+
 
 @csrf_exempt
 def ocr_result_view(request):
+    form_name = FormName.objects.get(name="Samp")
+    # EGG QUANTITY RECEIVED FORM
+    # Samp
+    # Form Name
+    print(form_name)
+    # with open("main/samp3json.json") as f:
+    with open("main/samp6.json") as f:
+        ocr_data = json.load(f)
+    lines = [] #line of texts extracted
+    for block in ocr_data["readResult"]["blocks"]:
+        for line in block["lines"]:
+            center = get_center(line["boundingPolygon"])
+            lines.append({
+                "text": line["text"],
+                "center": center,
+                "bbox": line["boundingPolygon"]
+            })
 
-    # table_name = ["COLLECTED REJECT EGGS"]
+    # === EXTRA TOTALS ===
+    
+    fields_to_find = list(
+        FormObject.objects
+        .filter(form_name=form_name, type=2)
+        .values_list('title', flat=True)  # change 'title' to the correct field name
+    )
+
+    extra_totals = {}
+
+    for field in fields_to_find:
+        reject_anchor_y = None
+        for line in lines:
+            text_upper = line["text"]
+            if text_upper.startswith(field):
+                rest = text_upper[len(field):].strip()
+                if rest:
+                    extra_totals[field] = rest
+                else:
+                    label_x, label_y = line["center"]
+                    candidates = [c for c in lines if c != line and c["center"][0] > label_x and abs(c["center"][1] - label_y) < 10]
+                    if candidates:
+                        candidates.sort(key=lambda c: c["center"][0])
+                        extra_totals[field] = candidates[0]["text"]
+                    else:
+                        extra_totals[field] = "N/A"
+                break
+    
+    tables = []
+    table_name = list(
+        FormObject.objects
+        .filter(form_name=form_name, type=1)
+        .values_list('title', flat=True)  # change 'title' to the correct field name
+    )
+    print(table_name)
+    print()
+    # table_name = ["05-01-25"]
     # table_name = ["04- 30 -25"]
-    table_name = ["COLLECTED GOOD EGGS"]
+    
+    # table_name = ["COLLECTED GOOD EGGS"]
     for t in table_name:
         #table_name = "COLLECTED REJECT EGGS"
 
         table = FormObject.objects.get(title=t)
-        print(table)
-        with open("main/samp3json.json") as f:
-        # with open("main/samp3json.json") as f:
-            ocr_data = json.load(f)
-
+     
         
-
-        lines = [] #line of texts extracted
-        for block in ocr_data["readResult"]["blocks"]:
-            for line in block["lines"]:
-                center = get_center(line["boundingPolygon"])
-                lines.append({
-                    "text": line["text"],
-                    "center": center,
-                    "bbox": line["boundingPolygon"]
-                })
 
 
         reject_anchor_y = None
@@ -82,7 +334,7 @@ def ocr_result_view(request):
            
         for line in lines:
 
-            if line["text"].strip().upper() == table.title:
+            if line["text"] == table.title:
                 reject_anchor_x, reject_anchor_y = line["center"]
                 break
 
@@ -98,35 +350,45 @@ def ocr_result_view(request):
         header_x_positions = {}
 
         if reject_anchor_y is not None:
-            closest_headers = {}  # To store the closest line for each header
+            closest_headers = {}
 
             for line in lines:
-                text = line["text"].strip().upper()
+                text = line["text"]
                 cx, cy = line["center"]
 
-                # Only consider lines strictly below the table title (with margin)
+                # Only consider lines below the table title (with margin)
                 if cy <= reject_anchor_y + 5:
                     continue
 
                 if text in header_names:
                     vertical_distance = cy - reject_anchor_y
+                    horizontal_distance = abs(cx - reject_anchor_x)
 
-                    # Check if it's the closest header match (vertically) so far
-                    if text not in closest_headers or vertical_distance < closest_headers[text]["distance"]:
+                    # Option 1: Euclidean distance
+                    total_distance = (vertical_distance ** 2 + horizontal_distance ** 2) ** 0.5
+
+                    # Option 2: Weighted sum (tune weights as needed)
+                    # total_distance = vertical_distance + 0.5 * horizontal_distance
+
+                    # Choose the closest header based on combined distance
+                    if (
+                        text not in closest_headers or
+                        total_distance < closest_headers[text]["total_distance"]
+                    ):
                         closest_headers[text] = {
                             "cx": cx,
                             "cy": cy,
-                            "distance": vertical_distance,
+                            "total_distance": total_distance,
                             "line": line
                         }
 
-            # Now extract x-positions from closest_headers
+            # Extract final x-positions
             for text, info in closest_headers.items():
                 header_x_positions[text] = info["cx"]
-                print(info["line"])
+                
 
 
-        print(header_x_positions)
+       
 
         #row_names = ['SUPER JUMBO', 'JUMBO', 'EXTRA LARGE', 'LARGE', 'MEDIUM', 'SMALL', "EXTRA SMALL", 'PEWEE']
 
@@ -140,30 +402,40 @@ def ocr_result_view(request):
 
         for field in row_names:
             for line in lines:
-                if field == line["text"].strip().upper():
+                if (
+                    field == line["text"]
+                    and line["center"][0] < reject_anchor_x  # within 100px horizontally of table name
+                    and line["center"][1] > reject_anchor_y  # ensure it's below the title
+                ):
+
                     field_y = line["center"][1]
-                    same_row = [l for l in lines if abs(l["center"][1] - field_y) < 15]
+                    label_x = line["center"][0]
+                    same_row = [l for l in lines if abs(l["center"][1] - field_y) < 15.6 and l["center"][0] > label_x + 5]
+
+                
                     # print(same_row)
                     field_values = {}
 
                     for col in header_names:
                         col_x = header_x_positions.get(col)
                         if col_x is None:
+                            print("n/a")
                             field_values[col] = "N/A"
                             continue
 
                         # Get the bbox for this header
-                        header_bbox = next(
-                            (l["bbox"] for l in lines if l["text"].strip().upper() == col),
-                            None
-                        )
-                        if not header_bbox:
+                        # Get the bbox from the closest matching header (already filtered correctly)
+                        header_info = closest_headers.get(col)
+                        if not header_info:
                             field_values[col] = "N/A"
                             continue
 
-                        # Find matches within same row that horizontally overlap with the header bbox
-                        matches = [l for l in same_row if is_same_column_1(header_bbox, l["bbox"], x_tolerance=12)]
+                        header_bbox = header_info["line"]["bbox"]
 
+                        
+                        # Find matches within same row that horizontally overlap with the header bbox
+                        matches = [l for l in same_row if is_same_column(header_bbox, l["bbox"])]
+                        # print(matches)
                         # Choose the one closest in X to the expected header position
                         closest = min(matches, key=lambda l: abs(l["center"][0] - col_x), default=None)
 
@@ -171,10 +443,12 @@ def ocr_result_view(request):
 
                     reject_table[field] = field_values
                     break
-
-        return JsonResponse({
-            "extracted_table": reject_table,
-        }, json_dumps_params={"indent": 2})
+                print(reject_table)
+        tables.append({t:reject_table})
+    return JsonResponse({
+        "extracted_table": tables,
+        "extracted_fields": extra_totals
+    }, json_dumps_params={"indent": 2})
 
 
 
@@ -280,20 +554,117 @@ def extract_table_rows_from_file(request):
 
 
 #extract_table_by_headers2
+# def extract_table_by_headers2(request):
+#     # table_name = "Business Name/Style ANDOKS LITSON CORPORATION Payment Terms: July 07, 2025"
+#     table_name = "EPP PRODUCTION LOT-BATCHCODE REPORT"
+#     # table_name = "Customer Id: $09-145"
+#     # table_name = "Table 1 Title"
+
+#     # expected_headers = ["Part Number", "Description", "UOM", "Delivered"]
+#     # expected_headers = ["Part Number", "Description", "Transferred", "\"Transferred", "Received", "Returned", "Retumed"]
+#     expected_headers = ["PACKER","PROD'N DATE", "HOUSE NUMBER", "MOTHER SKU", "INPUT (PCS)", "TRANSFORMATION", "TOTAL OTY"]
+#     # expected_headers = ["Header 1", "Header 2", "Header 3", "Header 4", "Header 5"]
+    
+
+#     # with open("main/samp9.json") as f:
+#     # with open("main/samp8b.json") as f:
+#     with open("main/samp5.json") as f:
+#     # with open("main/samp10.json") as f:
+#         ocr_data = json.load(f)
+
+#     lines = []
+#     for block in ocr_data["readResult"]["blocks"]:
+#         for line in block["lines"]:
+#             center = get_center(line["boundingPolygon"])
+#             lines.append({
+#                 "text": line["text"].strip(),
+#                 "center": center,
+#                 "bbox": line["boundingPolygon"]
+#             })
+
+#     table_title = table_name.strip().upper()
+#     expected_headers = [h.strip().upper() for h in expected_headers]
+
+
+#     anchor_y = None
+#     for line in lines:
+#         if line["text"].strip().upper() == table_title:
+#             _, anchor_y = line["center"]
+#             break
+#     if anchor_y is None:
+#         return {"error": "Table title not found"}
+
+#     headers_in_doc = {}
+#     for line in lines:
+#         text = line["text"].strip().upper()
+#         cx, cy = line["center"]
+#         if abs(cy - anchor_y) < 100 and text in expected_headers:
+#             headers_in_doc[text] = cx
+#             print(cy)
+#     print(headers_in_doc)
+#     if len(headers_in_doc) < len(expected_headers):
+
+#         return {"error": "Some headers not found below title"}
+
+
+#     extracted_rows = []
+#     row_lines = [line for line in lines if line["center"][1] > anchor_y + 50]
+
+#     used_rows = set()
+    
+#     stop_text = "BAWAL MAG IWAN NG CRATES"
+
+#     for line in row_lines:
+#         row_y = line["center"][1]
+
+#         # STOP if the special line is detected
+#         if line["text"].strip().upper() == stop_text.upper():
+#             break
+
+#         if any(abs(row_y - y) < 20 for y in used_rows):
+#             continue
+
+#         same_row = [l for l in row_lines if abs(l["center"][1] - row_y) < 10]
+
+#         # Also stop if the special text is found anywhere in this row
+#         if any(stop_text.upper() in l["text"].strip().upper() for l in same_row):
+#             break
+
+#         used_rows.add(row_y)
+
+#         row_data = {}
+#         for header in expected_headers:
+#             col_x = headers_in_doc.get(header)
+#             if col_x is None:
+#                 row_data[header] = "N/A"
+#                 continue
+
+#             header_bbox = next(line["bbox"] for line in lines if line["text"].strip().upper() == header)
+#             matches = [l for l in same_row if is_same_column(header_bbox, l["bbox"])]
+#             closest = min(matches, key=lambda l: abs(l["center"][0] - col_x), default=None)
+#             row_data[header] = closest["text"] if closest else "N/A"
+
+#         extracted_rows.append(row_data)
+
+
+#     return JsonResponse(extracted_rows, safe=False)
+
+
+
 def extract_table_by_headers2(request):
+    # table_name = "Customer Id: $09-111"
+    table_name = "Customer Id: $09-145"
     # table_name = "Business Name/Style ANDOKS LITSON CORPORATION Payment Terms: July 07, 2025"
     # table_name = "EPP PRODUCTION LOT-BATCHCODE REPORT"
-    table_name = "Customer Id: $09-145"
-
-    # expected_headers = ["Part Number", "Description", "UOM", "Delivered"]
     expected_headers = ["Part Number", "Description", "Transferred", "\"Transferred", "Received", "Returned", "Retumed"]
-    # expected_headers = ["PACKER","PROD'N DATE", "HOUSE NUMBER", "MOTHER SKU", "INPUT (PCS)", "TRANSFORMATION", "TOTAL OTY"]
-
-    # Preprocess lines
+    # expected_headers = ["Part Number", "Description", "UOM", "Delivered"]
+    # expected_headers = ["PACKER","PROD'N DATE", "HOUSE NUMBER", "MOTHER SKU", "INPUT (PCS)", "TRANSFORMATION", "-", "SALLE ORDER", "UOM","TOTAL OTY","DIRTY (PCS)",]
 
     with open("main/samp9.json") as f:
     # with open("main/samp8b.json") as f:
     # with open("main/samp5.json") as f:
+    # with open("main/samp10.json") as f:
+    # with open("main/samp11.json") as f:
         ocr_data = json.load(f)
 
     lines = []
@@ -307,9 +678,9 @@ def extract_table_by_headers2(request):
             })
 
     table_title = table_name.strip().upper()
-    expected_headers = [h.strip().upper() for h in expected_headers]
+    expected_headers_upper = [h.strip().upper() for h in expected_headers]
 
-
+    # Find table title Y
     anchor_y = None
     for line in lines:
         if line["text"].strip().upper() == table_title:
@@ -318,51 +689,62 @@ def extract_table_by_headers2(request):
     if anchor_y is None:
         return {"error": "Table title not found"}
 
+    # Find headers in the document
     headers_in_doc = {}
+    header_y_positions = []
     for line in lines:
         text = line["text"].strip().upper()
         cx, cy = line["center"]
-        if abs(cy - anchor_y) < 100 and text in expected_headers:
+        if cy > anchor_y and text in expected_headers_upper:
             headers_in_doc[text] = cx
-            print(cy)
-    print(headers_in_doc)
-    if len(headers_in_doc) < len(expected_headers):
+            header_y_positions.append(cy)
 
-        return {"error": "Some headers not found below title"}
+    # Warn if some headers are missing but do not stop execution
+    found_headers = list(headers_in_doc.keys())
+    missing_headers = [h for h in expected_headers_upper if h not in found_headers]
+    if missing_headers:
+        print(f"⚠ Missing headers: {missing_headers}")
+    if not headers_in_doc:
+        return {"error": "No matching headers found below title"}
 
+    # Dynamic start position
+    if header_y_positions:
+        start_y = max(header_y_positions) + 5
+    else:
+        start_y = anchor_y + 50
 
     extracted_rows = []
-    row_lines = [line for line in lines if line["center"][1] > anchor_y + 80]
+    row_lines = [line for line in lines if line["center"][1] > start_y]
 
     used_rows = set()
-    
+    stop_text = "BAWAL MAG IWAN NG CRATES"
+
     for line in row_lines:
         row_y = line["center"][1]
+
+        # STOP if the special line is detected
+        if line["text"].strip().upper() == stop_text.upper():
+            break
+
         if any(abs(row_y - y) < 20 for y in used_rows):
-            print(line)
-            print(row_y)
             continue
-        same_row = [l for l in row_lines if abs(l["center"][1] - row_y) < 10]
-        for x in same_row:
-            print(x)
-            print("------------------------------------")
-            print()
+
+        same_row = [l for l in row_lines if abs(l["center"][1] - row_y) < 13.5]
+
+        # Also stop if the special text is found anywhere in this row
+        if any(stop_text.upper() in l["text"].strip().upper() for l in same_row):
+            break
+
         used_rows.add(row_y)
 
         row_data = {}
-        for header in expected_headers:
-            col_x = headers_in_doc.get(header)
-            if col_x is None:
-                row_data[header] = "N/A"
-                continue
-            header_bbox = next(line["bbox"] for line in lines if line["text"].strip().upper() == header)
-
+        for header_text_upper, col_x in headers_in_doc.items():
+            # Use the original header casing from expected_headers
+            original_header = next((h for h in expected_headers if h.strip().upper() == header_text_upper), header_text_upper)
+            header_bbox = next(line["bbox"] for line in lines if line["text"].strip().upper() == header_text_upper)
             matches = [l for l in same_row if is_same_column(header_bbox, l["bbox"])]
             closest = min(matches, key=lambda l: abs(l["center"][0] - col_x), default=None)
-
-            row_data[header] = closest["text"] if closest else "N/A"
-
-
+            row_data[original_header] = closest["text"] if closest else "N/A"
 
         extracted_rows.append(row_data)
 

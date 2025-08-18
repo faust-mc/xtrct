@@ -78,7 +78,7 @@ class HeaderObjects(models.Model):
 
 class RowObjects(models.Model):
     form_object = models.ForeignKey(FormObject, on_delete=models.CASCADE)
-    row_name = models.CharField(max_length=20, null=True, blank=True)
+    row_name = models.CharField(max_length=30, null=True, blank=True)
 
     def __str__(self):
         return self.row_name
