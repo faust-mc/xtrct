@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}Text Extractor{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dropzone/5.9.3/dropzone.min.css">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.0-rc.0/css/select2.min.css" rel="stylesheet" />
+<style>
+    .dropzone {
+        border: 2px dashed #007bff;
+        border-radius: 10px;
+        background: #f8f9fa;
+        width: 100%;
+        height: 200px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        margin: 20px auto;
+    }
+
+    .dropzone .dz-message {
+        font-size: 16px;
+        color: #555;
+    }
+
+    /* Fix for Select2 inside form-floating */
+    .form-floating > .select2-container--default .select2-selection--single {
+        height: calc(3.5rem + 2px);
+        padding-top: 1.625rem;
+    }
+    .form-floating > label {
+        padding: 0.75rem 0.75rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<main class="container-fluid mb-4">
+    <div class="px-5">
+        <h2>Text Extractor</h2>
+        <hr>
+
+        <!-- Bootstrap 5 Select with Search -->
+        <div class="mb-3">
+            <div class="form-floating">
+                <select class="form-select" id="template" name="template">
+                    <option value="" selected>-- Choose type --</option>
+                    <option value="Template 1">Template 1</option>
+                    <option value="Template 2">Template 2</option>
+                    <option value="Template 3">Template 3</option>
+                    <option value="Template 4">Template 4</option>
+                    <option value="Template 5">Template 5</option>
+                </select>
+                <label for="template">Select Template</label>
+            </div>
+        </div>
+
+        <!-- Dropzone Area -->
+        <form action="/upload" class="dropzone mb-3" id="myDropzone">
+            <div class="dz-message">Drop an image or PDF here, or click to select</div>
+        </form>
+
+        <!-- Upload Button -->
+        <button id="ConvertBtn" class="btn btn-primary" type="button">Convert</button>
+    </div>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dropzone/5.9.3/min/dropzone.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.0-rc.0/js/select2.min.js"></script>
+
+<script>
+    // Initialize Select2 for searchable dropdown
+    $(document).ready(function () {
+        $('#template').select2({
+            placeholder: "-- Choose type --",
+            allowClear: true,
+            width: '100%'
+        });
+    });
+
+    Dropzone.autoDiscover = false;
+
+    const myDropzone = new Dropzone("#myDropzone", {
+        url: "/upload",
+        paramName: "file",
+        maxFiles: 1,
+        maxFilesize: 5,
+        acceptedFiles: "image/*,application/pdf",
+        addRemoveLinks: true,
+        autoProcessQueue: false,
+        dictDefaultMessage: "Drop an image or PDF here, or click to select",
+        init: function () {
+            this.on("maxfilesexceeded", function (file) {
+                this.removeAllFiles();
+                this.addFile(file);
+            });
+
+            this.on("success", function (file, response) {
+                console.log("Uploaded:", response);
+                file.serverId = response.filename;
+            });
+
+            this.on("removedfile", function (file) {
+                if (file.serverId) {
+                    fetch(`/delete/${file.serverId}`, { method: "DELETE" })
+                        .then(res => res.json())
+                        .then(data => console.log("Deleted:", data))
+                        .catch(err => console.error("Delete failed", err));
+                }
+            });
+        }
+    });
+
+    document.getElementById("ConvertBtn").addEventListener("click", function () {
+        myDropzone.processQueue();
+    });
+</script>
+{% endblock %}

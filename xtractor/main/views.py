@@ -5,57 +5,92 @@ from .models import  Type, FormObject, HeaderObjects, RowObjects, FieldObject
 from .forms import TypeForm, FormObjectForm, HeaderObjectsForm, RowObjectsForm, FieldObjectForm
 import json
 
-
 def login(request):
     
     return render(request, 'login.html')
 
 
+
 def index(request):
     
     return render(request, 'index.html')
-    
-    
 
+    
+    
 def template_config(request):
-    # if this is a POST request we need to process the form data
-    if request.method == "POST":
-        # create a form instance and populate it with data from the request:
-        typeform = TypeForm(request.POST, prefix='type')
-        formobjectform = FormObjectForm(request.POST, prefix='formobject')
-        headerobjectsform = HeaderObjectsForm(request.POST, prefix='headerobjects')
-        rowobjectsform = RowObjectsForm(request.POST, prefix='rowobjects')
-        fieldobjectform = FieldObjectForm(request.POST, prefix='fieldobject')
+    
+    return render(request, 'config.html')
+
+
+
+def extractor(request):
+    
+    return render(request, 'extractor.html')
+
+
+
+def submit_form_ajax(request):
+    if request.method == 'POST':
+            field_list = request.POST.getlist('field_list[]')
+            form_title = request.POST.get('form_title')
+            
+            table_data = dict(request.POST)  # convert QueryDict to dict for easier view
+
+            # print("Form Title:", form_title)
+            # print("Field List:", field_list)
+            # print("Full Data:", table_data)
+            
+            # Process the data
+            return JsonResponse({"Form Title" : form_title,"Field List": field_list,"Table Data" : table_data})
         
-        if 'submit_TypeForm' in request.POST:
-            if(typeform.is_valid()):
-                #process type form
-                type = typeform.save(commit=False) # Don't save yet
-                typeform.save()  # Save type                
-        elif 'submit_FormObject' in request.POST:
-            if(formobjectform.is_valid()):
-                #process form object
-                formobject = formobjectform.save()  # Save form   
-        elif 'submit_HeaderObjects' in request.POST:    
-            if(headerobjectsform.is_valid()):
-                #process form object 
-                headerobjects = headerobjectsform.save()  # Save header   
-        elif 'submit_RowObjects' in request.POST:    
-            if(rowobjectsform.is_valid()):   
-                #process form object
-                rowobjects = rowobjectsform.save()  # Save row  
-        elif 'submit_FieldObject' in request.POST:    
-            if(fieldobjectform.is_valid()):   
-                #process form object 
-                fieldobject = fieldobjectform.save()  # Save row  
-    else :
-        typeform = TypeForm(prefix='type')
-        formobjectform = FormObjectForm(prefix='formobject')
-        headerobjectsform = HeaderObjectsForm(prefix='headerobjects')
-        rowobjectsform = RowObjectsForm(prefix='rowobjects')
-        fieldobjectform = FieldObjectForm(prefix='fieldobject')
+            return JsonResponse({'status': 'success', 'message': 'Valid request method'})
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+
+
+
+def sample(request):
+    
+    return render(request, 'sample.html')
+
+# def template_config(request):
+#     # if this is a POST request we need to process the form data
+#     if request.method == "POST":
+#         # create a form instance and populate it with data from the request:
+#         typeform = TypeForm(request.POST, prefix='type')
+#         formobjectform = FormObjectForm(request.POST, prefix='formobject')
+#         headerobjectsform = HeaderObjectsForm(request.POST, prefix='headerobjects')
+#         rowobjectsform = RowObjectsForm(request.POST, prefix='rowobjects')
+#         fieldobjectform = FieldObjectForm(request.POST, prefix='fieldobject')
+        
+#         if 'submit_TypeForm' in request.POST:
+#             if(typeform.is_valid()):
+#                 #process type form
+#                 type = typeform.save(commit=False) # Don't save yet
+#                 typeform.save()  # Save type                
+#         elif 'submit_FormObject' in request.POST:
+#             if(formobjectform.is_valid()):
+#                 #process form object
+#                 formobject = formobjectform.save()  # Save form   
+#         elif 'submit_HeaderObjects' in request.POST:    
+#             if(headerobjectsform.is_valid()):
+#                 #process form object 
+#                 headerobjects = headerobjectsform.save()  # Save header   
+#         elif 'submit_RowObjects' in request.POST:    
+#             if(rowobjectsform.is_valid()):   
+#                 #process form object
+#                 rowobjects = rowobjectsform.save()  # Save row  
+#         elif 'submit_FieldObject' in request.POST:    
+#             if(fieldobjectform.is_valid()):   
+#                 #process form object 
+#                 fieldobject = fieldobjectform.save()  # Save row  
+#     else :
+#         typeform = TypeForm(prefix='type')
+#         formobjectform = FormObjectForm(prefix='formobject')
+#         headerobjectsform = HeaderObjectsForm(prefix='headerobjects')
+#         rowobjectsform = RowObjectsForm(prefix='rowobjects')
+#         fieldobjectform = FieldObjectForm(prefix='fieldobject')
    
-    return render(request, 'config.html', {'typeform': typeform, 'formobjectform': formobjectform,  'headerobjectsform': headerobjectsform,  'rowobjectsform': rowobjectsform,  'fieldobjectform': fieldobjectform})
+#     return render(request, 'config.html', {'typeform': typeform, 'formobjectform': formobjectform,  'headerobjectsform': headerobjectsform,  'rowobjectsform': rowobjectsform,  'fieldobjectform': fieldobjectform})
 
 
 
