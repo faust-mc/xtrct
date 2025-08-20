@@ -1,52 +1,176 @@
 from django.http import JsonResponse, HttpResponseRedirect
 from django.views.decorators.csrf import csrf_exempt
 
-from django.shortcuts import render
-from .models import  Type, FormObject, HeaderObjects, RowObjects, FieldObject
-from .forms import TypeForm, FormObjectForm, HeaderObjectsForm, RowObjectsForm, FieldObjectForm
+from django.shortcuts import render, redirect
+from .models import  ComponentType, FormObject, HeaderObjects, RowObjects, FieldObject, FormName
+from .forms import TypeForm, FormObjectForm, HeaderObjectsForm, RowObjectsForm, FieldObjectForm, ChangePasswordForm
 import json
+from collections import defaultdict
+import re
+from django.db import transaction
+from django.contrib import messages
+from django.contrib.auth import logout, update_session_auth_hash
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.hashers import check_password
+from django.contrib.auth.views import LoginView
+
+
+class CustomLoginView(LoginView):
+    template_name = "login.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated:
+            return redirect("main:index")  # <-- change "index" to your URL name
+        return super().dispatch(request, *args, **kwargs)
+
+
+@login_required
+def change_password(request):
+    if request.method == "POST":
+        form = ChangePasswordForm(request.POST)
+        if form.is_valid():
+            old_password = form.cleaned_data.get("old_password")
+            new_password1 = form.cleaned_data.get("new_password1")
+            new_password2 = form.cleaned_data.get("new_password2")
+
+            if not check_password(old_password, request.user.password):
+                messages.error(request, "Old password is incorrect.")
+            elif new_password1 != new_password2:
+                messages.error(request, "New passwords do not match.")
+            elif len(new_password1) < 8:
+                messages.error(request, "New password must be at least 8 characters.")
+            else:
+                request.user.set_password(new_password1)
+                request.user.save()
+                update_session_auth_hash(request, request.user)  # ✅ keeps user logged in
+                messages.success(request, "Password changed successfully!")
+                return redirect("main:index")  # change "index" to your homepage name
+    else:
+        form = ChangePasswordForm()
+
+    return render(request, "change_password.html", {"form": form})
+
+
 
 def login(request):
     
     return render(request, 'login.html')
 
 
+def logout_request(request):
+    logout(request)   # flushes the session
+    request.session.flush()  # just to be sure
+    return redirect("main:login_request")
 
+@login_required
 def index(request):
-    
     return render(request, 'index.html')
 
     
-    
+@login_required   
 def template_config(request):
     
     return render(request, 'config.html')
 
 
-
+@login_required
 def extractor(request):
     
     return render(request, 'extractor.html')
 
+def get_values(counter, key, value):
+
+    return 
+
+
+
+
+
+
 
 
 def submit_form_ajax(request):
-    if request.method == 'POST':
-            field_list = request.POST.getlist('field_list[]')
+    if request.method != 'POST':
+        return JsonResponse({"success": False, "error": "Invalid request method"}, status=405)
+
+    try:
+        with transaction.atomic():
+            # Get form title safely
             form_title = request.POST.get('form_title')
-            
-            table_data = dict(request.POST)  # convert QueryDict to dict for easier view
+            if not form_title:
+                return JsonResponse({"success": False, "error": "form_title is required"}, status=400)
 
-            # print("Form Title:", form_title)
-            # print("Field List:", field_list)
-            # print("Full Data:", table_data)
-            
-            # Process the data
-            return JsonResponse({"Form Title" : form_title,"Field List": field_list,"Table Data" : table_data})
-        
-            return JsonResponse({'status': 'success', 'message': 'Valid request method'})
-    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+            # Save FormName
+            form_name = FormName(name=form_title)
+            form_name.save()
 
+            # Proceed only if saved
+            if not form_name.pk:
+                return JsonResponse({"success": False, "error": "FormName could not be saved"}, status=400)
+
+            # Convert POST data to normal dict
+            form_data = dict(request.POST)
+
+            # Prepare tables dictionary
+            tables = defaultdict(dict)
+            pattern = re.compile(r"table_form\[(\d+)\]\[(.+?)\](?:\[\])?$")
+
+            for key, value in form_data.items():
+                match = pattern.match(key)
+                if match:
+                    index, field = match.groups()
+
+                    # label_header (single string)
+                    if "header][label]" in key and not key.endswith("[]"):
+                        tables[index]["label_header"] = value[0]
+
+                    # labels (list)
+                    elif "header][label" in key and key.endswith("[]"):
+                        tables[index].setdefault("labels", []).extend(value)
+
+                    # headers (list)
+                    elif field == "header" and key.endswith("[]"):
+                        tables[index].setdefault("headers", []).extend(value)
+
+                    # normal fields
+                    else:
+                        tables[index][field] = value[0] if len(value) == 1 else value
+
+            # Convert defaultdict to normal dict
+            tables = dict(tables)
+
+            # For debugging
+            
+            for k, v in tables.items():
+                type = ComponentType.objects.get(type="Table")
+
+                t1 = FormObject(form_name=form_name, type=type, title=v['table_title'])
+                t1.save()
+
+                if v['label_header'].strip() != '':
+                    header_label = HeaderObjects(form_object=t1, header_name=v['label_header'], header_type='label')
+                    header_label.save()
+
+
+                for l in v['labels']:
+                    row=RowObjects(form_object=t1, row_name=l)
+                    row.save()
+                for h in v['headers']:
+                    header = HeaderObjects(form_object=t1, header_name=h, header_type='value')
+                    header.save()
+
+            # Here you could save tables to DB if needed
+
+            return JsonResponse({
+                "success": True,
+                "form_id": form_name.pk,
+                "tables": tables
+            })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()  # prints full stack trace in console
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
 
 
 def sample(request):
@@ -94,7 +218,6 @@ def sample(request):
 #     return render(request, 'config.html', {'typeform': typeform, 'formobjectform': formobjectform,  'headerobjectsform': headerobjectsform,  'rowobjectsform': rowobjectsform,  'fieldobjectform': fieldobjectform})
 
 
-
    
 
 
@@ -102,6 +225,7 @@ def sample(request):
 
 
 @csrf_exempt
+@login_required
 def ocr_result_view(request):
     form_name = FormName.objects.get(name="Samp")
     # EGG QUANTITY RECEIVED FORM

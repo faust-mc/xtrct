@@ -6,25 +6,25 @@ from django.contrib.auth.models import User
 
 
 # class Type(models.Model):
-# 	delivery_code = models.ForeignKey(DeliveryCode, on_delete=models.CASCADE, null=True, blank=True)
-# 	by_request_item = models.ForeignKey(ByRequestItems, on_delete=models.CASCADE, null=True, blank=True)
-# 	total_weekly_request = models.FloatField(default=0, null=True, blank=True)
-# 	first_delivery = models.FloatField(default=0, null=True, blank=True)
-# 	second_delivery = models.FloatField(default=0, null=True, blank=True)
-# 	third_delivery = models.FloatField(default=0, null=True, blank=True)
-# 	fourth_delivery = models.FloatField(default=0, null=True, blank=True)
-# 	first_final_delivery = models.FloatField(default=0, null=True, blank=True)
-# 	second_final_delivery = models.FloatField(default=0, null=True, blank=True)
-# 	third_final_delivery = models.FloatField(default=0, null=True, blank=True)
-# 	fourth_final_delivery = models.FloatField(default=0, null=True, blank=True)
-# 	first_qty_delivery = models.FloatField(default=0, null=True, blank=True)
-# 	second_qty_delivery = models.FloatField(default=0, null=True, blank=True)
-# 	third_qty_delivery = models.FloatField(default=0, null=True, blank=True)
-# 	fourth_qty_delivery = models.FloatField(default=0, null=True, blank=True)
-# 	first_qty_uom = models.CharField(max_length=20, null=True, blank=True)
-# 	second_qty_byrequest_uom = models.CharField(max_length=20, null=True, blank=True)
-# 	third_qty_byrequest_uom = models.CharField(max_length=20, null=True, blank=True)
-# 	fourth_qty_byrequest_uom = models.CharField(max_length=20, null=True, blank=True)
+#   delivery_code = models.ForeignKey(DeliveryCode, on_delete=models.CASCADE, null=True, blank=True)
+#   by_request_item = models.ForeignKey(ByRequestItems, on_delete=models.CASCADE, null=True, blank=True)
+#   total_weekly_request = models.FloatField(default=0, null=True, blank=True)
+#   first_delivery = models.FloatField(default=0, null=True, blank=True)
+#   second_delivery = models.FloatField(default=0, null=True, blank=True)
+#   third_delivery = models.FloatField(default=0, null=True, blank=True)
+#   fourth_delivery = models.FloatField(default=0, null=True, blank=True)
+#   first_final_delivery = models.FloatField(default=0, null=True, blank=True)
+#   second_final_delivery = models.FloatField(default=0, null=True, blank=True)
+#   third_final_delivery = models.FloatField(default=0, null=True, blank=True)
+#   fourth_final_delivery = models.FloatField(default=0, null=True, blank=True)
+#   first_qty_delivery = models.FloatField(default=0, null=True, blank=True)
+#   second_qty_delivery = models.FloatField(default=0, null=True, blank=True)
+#   third_qty_delivery = models.FloatField(default=0, null=True, blank=True)
+#   fourth_qty_delivery = models.FloatField(default=0, null=True, blank=True)
+#   first_qty_uom = models.CharField(max_length=20, null=True, blank=True)
+#   second_qty_byrequest_uom = models.CharField(max_length=20, null=True, blank=True)
+#   third_qty_byrequest_uom = models.CharField(max_length=20, null=True, blank=True)
+#   fourth_qty_byrequest_uom = models.CharField(max_length=20, null=True, blank=True)
 
 
 
@@ -86,4 +86,5 @@ class RowObjects(models.Model):
 
 class FieldObject(models.Model):
     label = models.CharField(max_length=50)
+
 

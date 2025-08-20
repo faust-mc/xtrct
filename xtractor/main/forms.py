@@ -1,9 +1,9 @@
 from django import forms
-from .models import Type, FormObject, HeaderObjects, RowObjects, FieldObject
+from .models import ComponentType, FormObject, HeaderObjects, RowObjects, FieldObject
 
 class TypeForm(forms.ModelForm):
     class Meta:
-        model = Type
+        model = ComponentType
         fields = ['type']
 
 class FormObjectForm(forms.ModelForm):
@@ -28,3 +28,21 @@ class FieldObjectForm(forms.ModelForm):
     class Meta:
         model = FieldObject
         fields = ['label']
+
+
+
+
+
+class ChangePasswordForm(forms.Form):
+    old_password = forms.CharField(
+        widget=forms.PasswordInput(attrs={'placeholder': 'Old Password'}),
+        label="Old Password"
+    )
+    new_password1 = forms.CharField(
+        widget=forms.PasswordInput(attrs={'placeholder': 'New Password'}),
+        label="New Password"
+    )
+    new_password2 = forms.CharField(
+        widget=forms.PasswordInput(attrs={'placeholder': 'Confirm New Password'}),
+        label="Confirm New Password"
+    )

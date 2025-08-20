@@ -38,11 +38,11 @@
                 </a>
                 <ul class="dropdown-menu text-small shadow" aria-labelledby="dropdownNavLink">
                     <li><a class="dropdown-item {% if request.resolver_match.url_name == 'index' %}active{% endif %}"
-                            href="{% url 'index' %}">Home</a></li>
+                            href="{% url 'main:index' %}">Home</a></li>
                     <li><a class="dropdown-item {% if request.resolver_match.url_name == 'template_config' %}active{% endif %}"
-                            href="{% url 'template_config' %}">Template Configuration</a></li>
+                            href="{% url 'main:template_config' %}">Template Configuration</a></li>
                     <li><a class="dropdown-item {% if request.resolver_match.url_name == 'text_extractor' %}active{% endif %}"
-                            href="{% url 'extractor' %}">Text Extractor</a></li>
+                            href="{% url 'main:extractor' %}">Text Extractor</a></li>
                     <li><a class="dropdown-item {% if request.resolver_match.url_name == 'extracted_files' %}active{% endif %}"
                             href="">Extracted Files</a></li>
                 </ul>
@@ -55,7 +55,8 @@
                     <img src="https://github.com/mdo.png" alt="User" width="32" height="32" class="rounded-circle">
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end text-small shadow" aria-labelledby="dropdownUser2">
-                    <li><a class="dropdown-item" href="#">Sign out</a></li>
+                    <li><a class="dropdown-item" href="{% url 'main:change_password' %}">Change Password</a></li>
+                    <li><a class="dropdown-item" href="{% url 'main:logout_request' %}">Sign out</a></li>
                 </ul>
             </div>
         </div>

@@ -80,7 +80,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'xtract_test_db',
         'USER': 'root',
-        'PASSWORD': 'root',
+        'PASSWORD': '',
         'HOST': '127.0.0.1',  # or 'localhost'
         'PORT': '3306',       # default MySQL port
     }
@@ -129,3 +129,8 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+LOGIN_URL = 'main:login_request'
+LOGIN_REDIRECT_URL = '/index'  # or wherever you want users to go after login
+LOGOUT_REDIRECT_URL = '/login'
