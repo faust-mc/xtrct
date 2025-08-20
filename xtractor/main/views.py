@@ -86,49 +86,40 @@ def get_values(counter, key, value):
 
 
 
-
-
-
-
-
 def submit_form_ajax(request):
     if request.method != 'POST':
         return JsonResponse({"success": False, "error": "Invalid request method"}, status=405)
 
     try:
         with transaction.atomic():
-            # Get form title safely
+            form_fields = request.POST.getlist('field_list[]')
+            form_data = dict(request.POST)
+
+            #check if there is at least field or table
+            if not form_fields and not any(k.startswith("table_form") for k in form_data.keys()):
+                return JsonResponse({"success": False, "error": "Please add table or field in the form"}, status=400)
+            
+            #get form title
             form_title = request.POST.get('form_title')
             if not form_title:
                 return JsonResponse({"success": False, "error": "form_title is required"}, status=400)
 
-            # Save FormName
+            #check if already exist or create
             form_name, created = FormName.objects.get_or_create(name=form_title)
-
             if not created:
                 return JsonResponse({"success": False, "error": "Form already exists"}, status=400)
-                
-
-
-          
-                
-
             
-            form_fields = request.POST.getlist('field_list[]')
-            
+            #saving of fields    
             if form_fields:
                 component_field = ComponentType.objects.get(type="Field")
                 for ff in form_fields:
                     t1 = FormObject(form_name=form_name, type=component_field, title=ff)
                     t1.save()
-                    
 
-
-            form_data = dict(request.POST)
-
-
-            # Prepare tables dictionary
+            #saving of tables
             tables = defaultdict(dict)
+
+            #fixing tables
             pattern = re.compile(r"table_form\[(\d+)\]\[(.+?)\](?:\[\])?$")
 
             for key, value in form_data.items():
@@ -168,8 +159,7 @@ def submit_form_ajax(request):
                     header = HeaderObjects(form_object=t1, header_name=h, header_type='value')
                     header.save()
 
-            # Here you could save tables to DB if needed
-
+         
             return JsonResponse({
                 "success": True,
                 "redirect_url": reverse("main:template_detail", args=[form_name.pk])
