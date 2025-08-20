@@ -1,7 +1,7 @@
 from django.http import JsonResponse, HttpResponseRedirect
 from django.views.decorators.csrf import csrf_exempt
 
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from .models import  ComponentType, FormObject, HeaderObjects, RowObjects, FieldObject, FormName
 from .forms import TypeForm, FormObjectForm, HeaderObjectsForm, RowObjectsForm, FieldObjectForm, ChangePasswordForm
 import json
@@ -13,6 +13,8 @@ from django.contrib.auth import logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.hashers import check_password
 from django.contrib.auth.views import LoginView
+from django.urls import reverse
+
 
 
 class CustomLoginView(LoginView):
@@ -101,15 +103,29 @@ def submit_form_ajax(request):
                 return JsonResponse({"success": False, "error": "form_title is required"}, status=400)
 
             # Save FormName
-            form_name = FormName(name=form_title)
-            form_name.save()
+            form_name, created = FormName.objects.get_or_create(name=form_title)
 
-            # Proceed only if saved
-            if not form_name.pk:
-                return JsonResponse({"success": False, "error": "FormName could not be saved"}, status=400)
+            if not created:
+                return JsonResponse({"success": False, "error": "Form already exists"}, status=400)
+                
 
-            # Convert POST data to normal dict
+
+          
+                
+
+            
+            form_fields = request.POST.getlist('field_list[]')
+            
+            if form_fields:
+                component_field = ComponentType.objects.get(type="Field")
+                for ff in form_fields:
+                    t1 = FormObject(form_name=form_name, type=component_field, title=ff)
+                    t1.save()
+                    
+
+
             form_data = dict(request.POST)
+
 
             # Prepare tables dictionary
             tables = defaultdict(dict)
@@ -120,31 +136,24 @@ def submit_form_ajax(request):
                 if match:
                     index, field = match.groups()
 
-                    # label_header (single string)
                     if "header][label]" in key and not key.endswith("[]"):
                         tables[index]["label_header"] = value[0]
 
-                    # labels (list)
                     elif "header][label" in key and key.endswith("[]"):
                         tables[index].setdefault("labels", []).extend(value)
 
-                    # headers (list)
                     elif field == "header" and key.endswith("[]"):
                         tables[index].setdefault("headers", []).extend(value)
 
-                    # normal fields
                     else:
                         tables[index][field] = value[0] if len(value) == 1 else value
 
-            # Convert defaultdict to normal dict
             tables = dict(tables)
-
-            # For debugging
             
             for k, v in tables.items():
-                type = ComponentType.objects.get(type="Table")
+                component_table = ComponentType.objects.get(type="Table")
 
-                t1 = FormObject(form_name=form_name, type=type, title=v['table_title'])
+                t1 = FormObject(form_name=form_name, type=component_table, title=v['table_title'])
                 t1.save()
 
                 if v['label_header'].strip() != '':
@@ -163,14 +172,34 @@ def submit_form_ajax(request):
 
             return JsonResponse({
                 "success": True,
-                "form_id": form_name.pk,
-                "tables": tables
+                "redirect_url": reverse("main:template_detail", args=[form_name.pk])
+                
             })
 
     except Exception as e:
         import traceback
         traceback.print_exc()  # prints full stack trace in console
         return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+
+
+def template_detail(request, pk):
+    form = get_object_or_404(
+        FormName.objects.prefetch_related(
+            'formobject_set__type',
+            'formobject_set__headerobjects_set',
+            'formobject_set__rowobjects_set',
+        ),
+        pk=pk
+    )
+
+    context = {
+        "form": form,
+        "form_objects": form.formobject_set.all()
+    }
+    print(context)
+    return render(request, "components.html", context)
 
 
 def sample(request):

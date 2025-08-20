@@ -251,21 +251,27 @@
         var formData = $(this).serialize();
 
         $.ajax({
-            url: "{% url 'submit_form_ajax' %}",
+            url: "{% url 'main:submit_form_ajax' %}",
             type: 'POST', //
             headers: {
                 'X-CSRFToken': $('input[name="csrfmiddlewaretoken"]').val() // Get CSRF token
             },
             data: formData,
             success: function (response) {
-                // Handle successful response from the server
-                console.log('Success:', response);
-                // Example: Update a div with the response
-                $('#result').html(response);
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success',
+                    text: 'Form configuration successfully added',
+                    showConfirmButton: true
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        window.location.href = response.redirect_url;
+                    }
+                });
+
             },
-            error: function (xhr, status, error) {
-                // Handle errors during the AJAX request
-                console.error('Error:', status, error);
+            error: function (xhr, status, error ) {
+                Swal.fire(xhr.responseJSON.error);
             }
         });
     });

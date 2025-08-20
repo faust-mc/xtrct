@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% load static %}
+
+{% block styles %}
+<style>
+    .card-hover {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .card-hover:hover {
+        transform: scale(1.03);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+    }
+
+    .card-icon-top-right {
+        position: relative;
+        overflow: hidden;
+    }
+
+    .card-icon-top-right .fa-icon {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        font-size: 2.5rem;
+        color: rgba(0, 0, 0, 0.1);
+        opacity: 0.4;
+        /* Light faded icon */
+        pointer-events: none;
+    }
+</style>
+
+{% endblock %}
+
+{% block content %}
+	{{form}}
+	{% for f in form_objects%}
+	<h3>{{f}}<h3>
+
+	{%endfor%}
+
+{% endblock %}
+
+
