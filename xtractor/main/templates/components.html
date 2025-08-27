@@ -34,10 +34,18 @@
 
 {% block content %}
 	{{form}}
-	{% for f in form_objects%}
-	<h3>{{f}}<h3>
+	{% for obj in form.formobject_set.all %}
+  <h3>{{ obj.title }}</h3>
+  <ul>
+    {% for h in obj.headers.all %}
+      <li>Header: {{ h.header_name }} ({{ h.header_type }})</li>
+    {% endfor %}
+    {% for r in obj.rows.all %}
+      <li>Row: {{ r.row_name }}</li>
+    {% endfor %}
+  </ul>
+{% endfor %}
 
-	{%endfor%}
 
 {% endblock %}
 

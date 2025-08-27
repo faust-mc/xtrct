@@ -1,250 +1,267 @@
-from django.http import JsonResponse, HttpResponseRedirect
+from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-
-from django.shortcuts import render, redirect, get_object_or_404
-from .models import  ComponentType, FormObject, HeaderObjects, RowObjects, FieldObject, FormName
-from .forms import TypeForm, FormObjectForm, HeaderObjectsForm, RowObjectsForm, FieldObjectForm, ChangePasswordForm
 import json
-from collections import defaultdict
-import re
-from django.db import transaction
-from django.contrib import messages
-from django.contrib.auth import logout, update_session_auth_hash
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.hashers import check_password
-from django.contrib.auth.views import LoginView
-from django.urls import reverse
+from .models import  ComponentType, FormObject, HeaderObjects, RowObjects, FieldObject, FormName
+import math
 
 
 
-class CustomLoginView(LoginView):
-    template_name = "login.html"
 
-    def dispatch(self, request, *args, **kwargs):
-        if request.user.is_authenticated:
-            return redirect("main:index")  # <-- change "index" to your URL name
-        return super().dispatch(request, *args, **kwargs)
+def is_same_column_1(header_bbox, cell_bbox, x_tolerance=10):
+    # Get left and right boundaries for header and cell
+    header_xs = [p["x"] for p in header_bbox]
+    cell_xs = [p["x"] for p in cell_bbox]
 
+    header_left = min(header_xs)
+    header_right = max(header_xs)
 
-@login_required
-def change_password(request):
-    if request.method == "POST":
-        form = ChangePasswordForm(request.POST)
-        if form.is_valid():
-            old_password = form.cleaned_data.get("old_password")
-            new_password1 = form.cleaned_data.get("new_password1")
-            new_password2 = form.cleaned_data.get("new_password2")
+    cell_left = min(cell_xs)
+    cell_right = max(cell_xs)
 
-            if not check_password(old_password, request.user.password):
-                messages.error(request, "Old password is incorrect.")
-            elif new_password1 != new_password2:
-                messages.error(request, "New passwords do not match.")
-            elif len(new_password1) < 8:
-                messages.error(request, "New password must be at least 8 characters.")
-            else:
-                request.user.set_password(new_password1)
-                request.user.save()
-                update_session_auth_hash(request, request.user)  # ✅ keeps user logged in
-                messages.success(request, "Password changed successfully!")
-                return redirect("main:index")  # change "index" to your homepage name
-    else:
-        form = ChangePasswordForm()
-
-    return render(request, "change_password.html", {"form": form})
+    # Check horizontal overlap
+    return not (cell_right < header_left - x_tolerance or cell_left > header_right + x_tolerance)
 
 
+def is_same_column(header_bbox, cell_bbox):
+    header_xs = [p["x"] for p in header_bbox]
+    cell_xs = [p["x"] for p in cell_bbox]
 
-def login(request):
+    header_left = min(header_xs)
+    header_right = max(header_xs)
+
+    cell_left = min(cell_xs)
+    cell_right = max(cell_xs)
+
+    # Overlap condition (any horizontal overlap)
+    overlaps = not (cell_right < header_left or cell_left > header_right)
+
+    # Fully contained condition (cell box entirely inside header box)
+    fully_within = (cell_left >= header_left and cell_right <= header_right)
+
+    # Return True if either overlaps or fully contained
+    return overlaps or fully_within
+
+
+
+
+
+
+def get_center(bbox):
+    xs = [p["x"] for p in bbox]
+    ys = [p["y"] for p in bbox]
+    return (sum(xs) / 4, sum(ys) / 4)
+
+
+
+#THIS IS NEWER VERSION BUT NEEDS IMPROVEMENT
+# @csrf_exempt
+# def ocr_result_view(request):
+#     form_name = FormName.objects.get(name="Samp")
+#     print(form_name)
+#     with open("main/samp6.json") as f:
+#     # with open("main/samp6.json") as f:
+#         ocr_data = json.load(f)
+#     lines = [] #line of texts extracted
+#     for block in ocr_data["readResult"]["blocks"]:
+#         for line in block["lines"]:
+#             center = get_center(line["boundingPolygon"])
+#             lines.append({
+#                 "text": line["text"],
+#                 "center": center,
+#                 "bbox": line["boundingPolygon"]
+#             })
+
+#     # === EXTRA TOTALS ===
     
-    return render(request, 'login.html')
+#     fields_to_find = list(
+#         FormObject.objects
+#         .filter(form_name=form_name, type=2)
+#         .values_list('title', flat=True)  # change 'title' to the correct field name
+#     )
 
+#     extra_totals = {}
 
-def logout_request(request):
-    logout(request)   # flushes the session
-    request.session.flush()  # just to be sure
-    return redirect("main:login_request")
-
-@login_required
-def index(request):
-    return render(request, 'index.html')
-
+#     for field in fields_to_find:
+#         reject_anchor_y = None
+#         for line in lines:
+#             text_upper = line["text"].strip().upper()
+#             if text_upper.startswith(field):
+#                 rest = text_upper[len(field):].strip()
+#                 if rest:
+#                     extra_totals[field] = rest
+#                 else:
+#                     label_x, label_y = line["center"]
+#                     candidates = [c for c in lines if c != line and c["center"][0] > label_x and abs(c["center"][1] - label_y) < 10]
+#                     if candidates:
+#                         candidates.sort(key=lambda c: c["center"][0])
+#                         extra_totals[field] = candidates[0]["text"]
+#                     else:
+#                         extra_totals[field] = "N/A"
+#                 break
     
-@login_required   
-def template_config(request):
+#     tables = []
+#     table_name = list(
+#         FormObject.objects
+#         .filter(form_name=form_name, type=1)
+#         .values_list('title', flat=True)  # change 'title' to the correct field name
+#     )
+#     print(table_name)
+#     print()
+#     # table_name = ["05-01-25"]
+#     # table_name = ["04- 30 -25"]
     
-    return render(request, 'config.html')
+#     # table_name = ["COLLECTED GOOD EGGS"]
+#     for t in table_name:
+#         #table_name = "COLLECTED REJECT EGGS"
 
-
-@login_required
-def extractor(request):
-    
-    return render(request, 'extractor.html')
-
-def get_values(counter, key, value):
-
-    return 
-
-
-
-def submit_form_ajax(request):
-    if request.method != 'POST':
-        return JsonResponse({"success": False, "error": "Invalid request method"}, status=405)
-
-    try:
-        with transaction.atomic():
-            form_fields = request.POST.getlist('field_list[]')
-            form_data = dict(request.POST)
-
-            #check if there is at least field or table
-            if not form_fields and not any(k.startswith("table_form") for k in form_data.keys()):
-                return JsonResponse({"success": False, "error": "Please add table or field in the form"}, status=400)
-            
-            #get form title
-            form_title = request.POST.get('form_title')
-            if not form_title:
-                return JsonResponse({"success": False, "error": "form_title is required"}, status=400)
-
-            #check if already exist or create
-            form_name, created = FormName.objects.get_or_create(name=form_title)
-            if not created:
-                return JsonResponse({"success": False, "error": "Form already exists"}, status=400)
-            
-            #saving of fields    
-            if form_fields:
-                component_field = ComponentType.objects.get(type="Field")
-                for ff in form_fields:
-                    t1 = FormObject(form_name=form_name, type=component_field, title=ff)
-                    t1.save()
-
-            #saving of tables
-            tables = defaultdict(dict)
-
-            #fixing tables
-            pattern = re.compile(r"table_form\[(\d+)\]\[(.+?)\](?:\[\])?$")
-
-            for key, value in form_data.items():
-                match = pattern.match(key)
-                if match:
-                    index, field = match.groups()
-
-                    if "header][label]" in key and not key.endswith("[]"):
-                        tables[index]["label_header"] = value[0]
-
-                    elif "header][label" in key and key.endswith("[]"):
-                        tables[index].setdefault("labels", []).extend(value)
-
-                    elif field == "header" and key.endswith("[]"):
-                        tables[index].setdefault("headers", []).extend(value)
-
-                    else:
-                        tables[index][field] = value[0] if len(value) == 1 else value
-
-            tables = dict(tables)
-            
-            for k, v in tables.items():
-                component_table = ComponentType.objects.get(type="Table")
-
-                t1 = FormObject(form_name=form_name, type=component_table, title=v['table_title'])
-                t1.save()
-
-                if v['label_header'].strip() != '':
-                    header_label = HeaderObjects(form_object=t1, header_name=v['label_header'], header_type='label')
-                    header_label.save()
-
-
-                for l in v['labels']:
-                    row=RowObjects(form_object=t1, row_name=l)
-                    row.save()
-                for h in v['headers']:
-                    header = HeaderObjects(form_object=t1, header_name=h, header_type='value')
-                    header.save()
-
-         
-            return JsonResponse({
-                "success": True,
-                "redirect_url": reverse("main:template_detail", args=[form_name.pk])
-                
-            })
-
-    except Exception as e:
-        import traceback
-        traceback.print_exc()  # prints full stack trace in console
-        return JsonResponse({"success": False, "error": str(e)}, status=500)
-
-
-
-
-def template_detail(request, pk):
-    form = get_object_or_404(
-        FormName.objects.prefetch_related(
-            'formobject_set__type',
-            'formobject_set__headers',
-            'formobject_set__rows',
-        ),
-        pk=pk
-    )
-    
-    context = {
-        "form": form,
-        "form_objects": form.formobject_set.all()
-    }
-    print(context)
-    return render(request, "components.html", context)
-
-
-def sample(request):
-    
-    return render(request, 'sample.html')
-
-# def template_config(request):
-#     # if this is a POST request we need to process the form data
-#     if request.method == "POST":
-#         # create a form instance and populate it with data from the request:
-#         typeform = TypeForm(request.POST, prefix='type')
-#         formobjectform = FormObjectForm(request.POST, prefix='formobject')
-#         headerobjectsform = HeaderObjectsForm(request.POST, prefix='headerobjects')
-#         rowobjectsform = RowObjectsForm(request.POST, prefix='rowobjects')
-#         fieldobjectform = FieldObjectForm(request.POST, prefix='fieldobject')
+#         table = FormObject.objects.get(title=t)
+     
         
-#         if 'submit_TypeForm' in request.POST:
-#             if(typeform.is_valid()):
-#                 #process type form
-#                 type = typeform.save(commit=False) # Don't save yet
-#                 typeform.save()  # Save type                
-#         elif 'submit_FormObject' in request.POST:
-#             if(formobjectform.is_valid()):
-#                 #process form object
-#                 formobject = formobjectform.save()  # Save form   
-#         elif 'submit_HeaderObjects' in request.POST:    
-#             if(headerobjectsform.is_valid()):
-#                 #process form object 
-#                 headerobjects = headerobjectsform.save()  # Save header   
-#         elif 'submit_RowObjects' in request.POST:    
-#             if(rowobjectsform.is_valid()):   
-#                 #process form object
-#                 rowobjects = rowobjectsform.save()  # Save row  
-#         elif 'submit_FieldObject' in request.POST:    
-#             if(fieldobjectform.is_valid()):   
-#                 #process form object 
-#                 fieldobject = fieldobjectform.save()  # Save row  
-#     else :
-#         typeform = TypeForm(prefix='type')
-#         formobjectform = FormObjectForm(prefix='formobject')
-#         headerobjectsform = HeaderObjectsForm(prefix='headerobjects')
-#         rowobjectsform = RowObjectsForm(prefix='rowobjects')
-#         fieldobjectform = FieldObjectForm(prefix='fieldobject')
-   
-#     return render(request, 'config.html', {'typeform': typeform, 'formobjectform': formobjectform,  'headerobjectsform': headerobjectsform,  'rowobjectsform': rowobjectsform,  'fieldobjectform': fieldobjectform})
+
+#         print(table)
+#         reject_anchor_y = None
+
+           
+#         for line in lines:
+
+#             if line["text"].strip() == table.title:
+#                 reject_anchor_x, reject_anchor_y = line["center"]
+#                 break
+
+#         #header_names = ["QUANTITY", "TOTAL"]
+
+#         header_names = list(
+#             HeaderObjects.objects
+#             .filter(form_object=table)
+#             .exclude(header_type="label")
+#             .values_list('header_name', flat=True)
+#         )
+
+#         header_x_positions = {}
+#         closest_headers = {}  # <-- restore this so later code works
+
+#         if reject_anchor_y is not None:
+#             # Normalize expected names once and keep a map to original casing
+#             header_map = {h.strip().upper(): h for h in header_names}
+#             expected_set = set(header_map.keys())
+
+#             # 1) Collect candidates below the title
+#             MIN_GAP = 2
+#             candidates = []
+#             for line in lines:
+#                 text_u = line["text"].strip().upper()
+#                 cx, cy = line["center"]
+#                 if cy > reject_anchor_y + MIN_GAP and text_u in expected_set:
+#                     candidates.append({
+#                         "text_u": text_u,
+#                         "cx": cx,
+#                         "cy": cy,
+#                         "line": line
+#                     })
+
+#             if candidates:
+#                 # 2) Cluster by Y
+#                 Y_TOL = 12
+#                 candidates.sort(key=lambda d: d["cy"])
+#                 clusters = []
+#                 cur = [candidates[0]]
+#                 for cand in candidates[1:]:
+#                     if abs(cand["cy"] - cur[-1]["cy"]) <= Y_TOL:
+#                         cur.append(cand)
+#                     else:
+#                         clusters.append(cur)
+#                         cur = [cand]
+#                 clusters.append(cur)
+
+#                 # 3) Pick best cluster
+#                 def cluster_score(cluster):
+#                     uniq = {c["text_u"] for c in cluster}
+#                     min_cy = min(c["cy"] for c in cluster)
+#                     return (len(uniq), -min_cy)
+
+#                 best_cluster = max(clusters, key=cluster_score)
+
+#                 # 4) Build both header_x_positions and closest_headers
+#                 import statistics
+#                 cluster_median_y = statistics.median(c["cy"] for c in best_cluster)
+#                 for h_upper in expected_set:
+#                     options = [c for c in best_cluster if c["text_u"] == h_upper]
+#                     if not options:
+#                         continue
+#                     chosen = min(options, key=lambda c: (abs(c["cy"] - cluster_median_y), c["cx"]))
+#                     original_name = header_map[h_upper]
+#                     header_x_positions[original_name] = chosen["cx"]
+#                     closest_headers[original_name] = chosen  # <-- store full info for later bbox matching
+
+                
 
 
-   
+       
 
+#         #row_names = ['SUPER JUMBO', 'JUMBO', 'EXTRA LARGE', 'LARGE', 'MEDIUM', 'SMALL', "EXTRA SMALL", 'PEWEE']
+
+#         row_names = list(
+#             RowObjects.objects
+#             .filter(form_object=table)
+#             .values_list('row_name', flat=True)
+#         )
+
+#         reject_table = {}
+
+#         for field in row_names:
+#             for line in lines:
+#                 if (
+#                     field == line["text"]
+#                     and line["center"][0] < reject_anchor_x  # within 100px horizontally of table name
+#                     and line["center"][1] > reject_anchor_y  # ensure it's below the title
+#                 ):
+
+#                     field_y = line["center"][1]
+#                     label_x = line["center"][0]
+#                     same_row = [l for l in lines if abs(l["center"][1] - field_y) < 15.6 and l["center"][0] > label_x + 5]
+
+                
+#                     # print(same_row)
+#                     field_values = {}
+
+#                     for col in header_names:
+#                         col_x = header_x_positions.get(col)
+#                         if col_x is None:
+#                             print("n/a")
+#                             field_values[col] = "N/A"
+#                             continue
+
+#                         # Get the bbox for this header
+#                         # Get the bbox from the closest matching header (already filtered correctly)
+#                         header_info = closest_headers.get(col)
+#                         if not header_info:
+#                             field_values[col] = "N/A"
+#                             continue
+
+#                         header_bbox = header_info["line"]["bbox"]
+
+                        
+#                         # Find matches within same row that horizontally overlap with the header bbox
+#                         matches = [l for l in same_row if is_same_column(header_bbox, l["bbox"])]
+#                         # print(matches)
+#                         # Choose the one closest in X to the expected header position
+#                         closest = min(matches, key=lambda l: abs(l["center"][0] - col_x), default=None)
+
+#                         field_values[col] = closest["text"] if closest else "N/A"
+
+#                     reject_table[field] = field_values
+#                     break
+               
+#         tables.append({t:reject_table})
+#     return JsonResponse({
+#         "extracted_table": tables,
+#         "extracted_fields": extra_totals
+#     }, json_dumps_params={"indent": 2})
 
 
 
 
 @csrf_exempt
-@login_required
 def ocr_result_view(request):
     form_name = FormName.objects.get(name="Samp")
     # EGG QUANTITY RECEIVED FORM
@@ -535,6 +552,7 @@ def extract_table_rows_from_file(request):
 
     return JsonResponse(sorted_rows, safe=False)
 
+
 #extract_table_by_headers2
 # def extract_table_by_headers2(request):
 #     # table_name = "Business Name/Style ANDOKS LITSON CORPORATION Payment Terms: July 07, 2025"
@@ -730,7 +748,99 @@ def extract_table_by_headers2(request):
 
         extracted_rows.append(row_data)
 
+    return JsonResponse(extracted_rows, safe=False)
 
-    return extracted_rows
+
+
+#models.py
+
+from email.policy import default
+from random import choices
+from django.utils.timezone import now
+from django.db import models
+from django.contrib.auth.models import User
+
+
+# class Type(models.Model):
+# 	delivery_code = models.ForeignKey(DeliveryCode, on_delete=models.CASCADE, null=True, blank=True)
+# 	by_request_item = models.ForeignKey(ByRequestItems, on_delete=models.CASCADE, null=True, blank=True)
+# 	total_weekly_request = models.FloatField(default=0, null=True, blank=True)
+# 	first_delivery = models.FloatField(default=0, null=True, blank=True)
+# 	second_delivery = models.FloatField(default=0, null=True, blank=True)
+# 	third_delivery = models.FloatField(default=0, null=True, blank=True)
+# 	fourth_delivery = models.FloatField(default=0, null=True, blank=True)
+# 	first_final_delivery = models.FloatField(default=0, null=True, blank=True)
+# 	second_final_delivery = models.FloatField(default=0, null=True, blank=True)
+# 	third_final_delivery = models.FloatField(default=0, null=True, blank=True)
+# 	fourth_final_delivery = models.FloatField(default=0, null=True, blank=True)
+# 	first_qty_delivery = models.FloatField(default=0, null=True, blank=True)
+# 	second_qty_delivery = models.FloatField(default=0, null=True, blank=True)
+# 	third_qty_delivery = models.FloatField(default=0, null=True, blank=True)
+# 	fourth_qty_delivery = models.FloatField(default=0, null=True, blank=True)
+# 	first_qty_uom = models.CharField(max_length=20, null=True, blank=True)
+# 	second_qty_byrequest_uom = models.CharField(max_length=20, null=True, blank=True)
+# 	third_qty_byrequest_uom = models.CharField(max_length=20, null=True, blank=True)
+# 	fourth_qty_byrequest_uom = models.CharField(max_length=20, null=True, blank=True)
+
+
+
+
+class FormName(models.Model):
+    name = models.CharField(max_length=40, null=True, blank=True)
+
+    def __str__(self):
+        return self.name
+
+
+
+
+class ComponentType(models.Model):
+    type = models.CharField(max_length=20, null=True, blank=True)
+
+    def __str__(self):
+        return self.type
+
+
+
+class FormObject(models.Model):
+    form_name = models.ForeignKey(FormName, on_delete=models.CASCADE, null=True, blank=True)
+    type = models.ForeignKey(ComponentType, on_delete=models.CASCADE)
+    title = models.CharField(max_length=40, null=True, blank=True)
+
+    def __str__(self):
+        return self.title
+        # return f"{self.form_name.name} - {self.title}"
+
+
+class HeaderObjects(models.Model):
+    HEADER_TYPE_CHOICES = [
+        ('label', 'Label'),
+        ('value', 'Value'),
+    ]
+
+    form_object = models.ForeignKey(FormObject, on_delete=models.CASCADE)
+    header_name = models.CharField(max_length=20, null=True, blank=True)
+    header_type = models.CharField(
+        max_length=10,
+        choices=HEADER_TYPE_CHOICES,
+        default='label',
+        null=True,
+        blank=True
+    )
+
+    def __str__(self):
+        return self.header_name
+
+
+class RowObjects(models.Model):
+    form_object = models.ForeignKey(FormObject, on_delete=models.CASCADE)
+    row_name = models.CharField(max_length=30, null=True, blank=True)
+
+    def __str__(self):
+        return self.row_name
+
+
+class FieldObject(models.Model):
+    label = models.CharField(max_length=50)
 
 
