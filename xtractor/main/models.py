@@ -62,7 +62,7 @@ class HeaderObjects(models.Model):
         ('value', 'Value'),
     ]
 
-    form_object = models.ForeignKey(FormObject, on_delete=models.CASCADE)
+    form_object = models.ForeignKey(FormObject, on_delete=models.CASCADE, related_name="headers")
     header_name = models.CharField(max_length=20, null=True, blank=True)
     header_type = models.CharField(
         max_length=10,
@@ -77,7 +77,7 @@ class HeaderObjects(models.Model):
 
 
 class RowObjects(models.Model):
-    form_object = models.ForeignKey(FormObject, on_delete=models.CASCADE)
+    form_object = models.ForeignKey(FormObject, on_delete=models.CASCADE, related_name="rows")
     row_name = models.CharField(max_length=30, null=True, blank=True)
 
     def __str__(self):
