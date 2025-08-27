@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Template List{% endblock %}
+
+{% block styles %}
+<style>
+    .rotate-icon {
+        transition: transform 0.1s ease-in-out;
+    }
+
+    .rotate-icon.rotate {
+        transform: rotate(90deg);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<main class="container-fluid mb-4">
+    <div class="px-5 rounded">
+        <h2>Template List</h2>
+        <hr>
+
+        <table id="TemplateList" class="table table-striped table-bordered">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+        </table>
+    </div>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function () {
+        var table = $('#TemplateList').DataTable({
+            "processing": true,
+            "serverSide": true,
+            ajax: {
+                url: "{% url 'main:load_template_list' %}",  // change to your server-side script
+                type: "POST"
+            },
+            columns: [
+                { data: "name" },
+                {
+                    data: null,   // no direct database field
+                    orderable: false,
+                    searchable: false,
+                    render: function (data, type, row) {
+                        return `
+                        <a href="{% url 'main:template_config' %}${row.id}" class="btn btn-sm btn-primary">Edit</a>
+                    `;
+                    }
+                }
+            ]
+        });
+    });
+</script>
+{% endblock %}

@@ -2,7 +2,7 @@ from django.urls import path
 from django.contrib.auth import views as auth_views
 
 
-from .views import (ocr_result_view, quantity_graded_eggs, extract_table_rows_from_file, template_config, login,index, submit_form_ajax, extractor, sample, logout_request, CustomLoginView, change_password, template_detail)
+from .views import (ocr_result_view, quantity_graded_eggs, extract_table_rows_from_file, template_list, load_template_list, template_config, login,index, submit_form_ajax, extractor, sample, logout_request, CustomLoginView, change_password, template_detail)
 
 
 app_name = 'main'
@@ -10,9 +10,16 @@ app_name = 'main'
 urlpatterns = [
     #LOGIN
     path("", CustomLoginView.as_view(), name="login"),
-   # path("login/", login, name="login"),
+    #path("login/", login, name="login"),
     path("index/", index, name="index"),
+    
+    path("template_list/", template_list, name="template_list"),
+    path("load_template_list/", load_template_list, name="load_template_list"),
     path("template_config/", template_config, name="template_config"),
+    path("template_config/<int:pk>", template_config, name="template_config_edit"),
+    
+    
+    path('submit_form_ajax/', submit_form_ajax, name='submit_form_ajax'),
     path("template_detail/<int:pk>/", template_detail, name="template_detail"),
     path("extractor/", extractor, name="extractor"),
     

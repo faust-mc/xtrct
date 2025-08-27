@@ -14,7 +14,9 @@
     <link rel="stylesheet" href="{% static 'toastr/toastr.min.css' %}">
 
     <link rel="stylesheet" href="{% static 'style.css' %}">
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link href="{% static 'node_modules/datatables.net-bs5/css/dataTables.bootstrap5.min.css' %}" rel="stylesheet">
+    <link href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+
     {% block styles %}
     <style>
         body {
@@ -81,6 +83,9 @@
     <script src="{% static 'jquery/jquery-3.7.1.min.js' %}"></script>
     <script src="{% static 'toastr/toastr.min.js' %}"></script>
     <script src="{% static 'script.js' %}"></script>
+    <script src="{% static 'node_modules/datatables.net/js/dataTables.min.js' %}"></script>
+    <script src="{% static 'node_modules/datatables.net-bs5/js/dataTables.bootstrap5.min.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <!-- Loader Overlay -->
     <div id="loadingOverlay" style="display: none;">

@@ -69,10 +69,80 @@ def index(request):
     return render(request, 'index.html')
 
     
-@login_required   
-def template_config(request):
     
-    return render(request, 'config.html')
+@login_required   
+def template_list(request):
+    
+    return render(request, 'template_list.html')
+
+
+@csrf_exempt
+@login_required
+def load_template_list(request):
+    draw = int(request.POST.get('draw', 1))
+    start = int(request.POST.get('start', 0))
+    length = int(request.POST.get('length', 10))
+    search_value = request.POST.get('search[value]', '')
+    order_column_index = request.POST.get('order[0][column]')
+    order_direction = request.POST.get('order[0][dir]', 'asc')
+
+    # 🔹 Query all records from DB
+    qs = FormName.objects.all()
+
+    # 🔹 Filtering (LIKE query)
+    if search_value:
+        qs = qs.filter(name__icontains=search_value)
+
+    total_records = FormName.objects.count()   # total in DB
+    filtered_records = qs.count()              # total after filtering
+
+    # 🔹 Sorting
+    if order_column_index is not None:
+        order_column_index = int(order_column_index)
+        order_column_name = request.POST.get(f'columns[{order_column_index}][data]')
+        if order_column_name:
+            if order_direction == "desc":
+                qs = qs.order_by(f'-{order_column_name}')
+            else:
+                qs = qs.order_by(order_column_name)
+
+    # 🔹 Pagination
+    qs = qs[start:start + length]
+
+    # 🔹 Convert queryset to JSON
+    data = list(qs.values("id", "name"))
+
+    response = {
+        "draw": draw,
+        "recordsTotal": total_records,
+        "recordsFiltered": filtered_records,
+        "data": data,
+    }
+    return JsonResponse(response)
+
+    
+@login_required   
+def template_config(request, pk=None):
+    form = None
+    form_objects = []
+
+    if pk:  # if editing / viewing an existing FormName
+        form = get_object_or_404(
+            FormName.objects.prefetch_related(
+                'formobject_set__type',
+                'formobject_set__headerobjects_set',
+                'formobject_set__rowobjects_set',
+            ),
+            pk=pk
+        )
+        form_objects = form.formobject_set.all()
+
+    context = {
+        "form": form,
+        "form_objects": form_objects,
+    }
+    return render(request, "config.html", context)
+
 
 
 @login_required
