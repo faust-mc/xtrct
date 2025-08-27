@@ -178,12 +178,12 @@ def template_detail(request, pk):
     form = get_object_or_404(
         FormName.objects.prefetch_related(
             'formobject_set__type',
-            'formobject_set__headerobjects_set',
-            'formobject_set__rowobjects_set',
+            'formobject_set__headers',
+            'formobject_set__rows',
         ),
         pk=pk
     )
-
+    
     context = {
         "form": form,
         "form_objects": form.formobject_set.all()
