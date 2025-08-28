@@ -148,6 +148,7 @@ def submit_form_ajax(request):
             form_fields = request.POST.getlist('field_list[]')
             form_data = dict(request.POST)
 
+
             #check if there is at least field or table
             if not form_fields and not any(k.startswith("table_form") for k in form_data.keys()):
                 return JsonResponse({"success": False, "error": "Please add table or field in the form"}, status=400)
@@ -224,6 +225,96 @@ def submit_form_ajax(request):
         traceback.print_exc()  # prints full stack trace in console
         return JsonResponse({"success": False, "error": str(e)}, status=500)
 
+
+
+def edit_form_ajax(request, pk):
+    if request.method != 'POST':
+        return JsonResponse({"success": False, "error": "Invalid request method"}, status=405)
+
+    try:
+        
+
+        with transaction.atomic():
+            form_fields = request.POST.getlist('field_list[]')
+            print(form_fields)
+            
+            form_data = dict(request.POST)
+
+            # check if there is at least one field or table
+            if not form_fields and not any(k.startswith("table_form") for k in form_data.keys()):
+                return JsonResponse({"success": False, "error": "Please add table or field in the form"}, status=400)
+
+            # fetch the existing form
+            try:
+                form_name = FormName.objects.get(pk=pk)
+            except FormName.DoesNotExist:
+                return JsonResponse({"success": False, "error": "Form does not exist"}, status=404)
+
+            # update form title if provided
+            form_title = request.POST.get('form_title')
+            if form_title:
+                form_name.name = form_title
+                form_name.save()
+
+            # delete old FormObjects (and cascade their headers/rows)
+            FormObject.objects.filter(form_name=form_name).delete()
+
+            # re-save fields
+            if form_fields:
+                component_field = ComponentType.objects.get(type="Field")
+                for ff in form_fields:
+                    t1 = FormObject(form_name=form_name, type=component_field, title=ff)
+                    t1.save()
+
+            # re-save tables
+            tables = defaultdict(dict)
+            pattern = re.compile(r"table_form\[(\d+)\]\[(.+?)\](?:\[\])?$")
+
+            for key, value in form_data.items():
+                match = pattern.match(key)
+                if match:
+                    index, field = match.groups()
+
+                    if "header][label]" in key and not key.endswith("[]"):
+                        tables[index]["label_header"] = value[0]
+
+                    elif "header][label" in key and key.endswith("[]"):
+                        tables[index].setdefault("labels", []).extend(value)
+
+                    elif field == "header" and key.endswith("[]"):
+                        tables[index].setdefault("headers", []).extend(value)
+
+                    else:
+                        tables[index][field] = value[0] if len(value) == 1 else value
+
+            tables = dict(tables)
+
+            for k, v in tables.items():
+                component_table = ComponentType.objects.get(type="Table")
+                t1 = FormObject(form_name=form_name, type=component_table, title=v['table_title'])
+                t1.save()
+
+                if v['label_header'].strip() != '':
+                    header_label = HeaderObjects(form_object=t1, header_name=v['label_header'], header_type='label')
+                    header_label.save()
+
+                for l in v['labels']:
+                    row = RowObjects(form_object=t1, row_name=l)
+                    row.save()
+
+                for h in v['headers']:
+                    header = HeaderObjects(form_object=t1, header_name=h, header_type='value')
+                    header.save()
+
+            return JsonResponse({
+                "success": True,
+                "redirect_url": reverse("main:template_detail", args=[form_name.pk])
+            })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
 
 
 
