@@ -18,46 +18,14 @@
 <main class="container-fluid mb-4">
     <div class="px-5 rounded">
         <h2>Template Configuration</h2>
-        <!-- Debug: check raw data -->
-        <!-- <pre>{{ form_objects_data|safe }}</pre> -->
-
-        <!-- <h2>{{ form.name }}</h2>
-
-        <h3>Tables</h3>
-        {% for table in tables %}
-        <h4>{{ table.title }} (id: {{ table.id }})</h4>
-
-        <strong>Headers:</strong>
-        <ul>
-            {% for h in table.headers %}
-            <li>{{ h.name }} ({{ h.type }})</li>
-            {% empty %}
-            <li>No headers found</li>
-            {% endfor %}
-        </ul>
-
-        <strong>Rows:</strong>
-        <ul>
-            {% for r in table.rows %}
-            <li>{{ r.name }}</li>
-            {% empty %}
-            <li>No rows found</li>
-            {% endfor %}
-        </ul>
-        {% empty %}
-        <p>No tables found</p>
-        {% endfor %} -->
-
         <hr>
         <form id="config_form" action="" method="post">
             {% csrf_token %}
             <!-- Form Title -->
-            {% if form %}
             <div class="mb-3 row">
                 <label for="InputTitle" class="col-12 col-md-2 col-form-label"><strong>Form Title</strong></label>
                 <div class="col-12 col-md-10">
-                    <input type="text" class="form-control" id="InputTitle" name="form_title" value="{{ form.name }}"
-                        required>
+                    <input type="text" class="form-control" id="InputTitle" name="form_title" required>
                 </div>
             </div>
             <!-- Action Buttons -->
@@ -79,76 +47,11 @@
                                 <strong>Field List</strong>
                             </label>
                             <div class="field_container" id="field_container">
-                                <ul>
-                                    <!-- {% for field in fields %}
-                                    <div class="mb-1 row align-items-center field-item">
-                                        <label class="col-auto col-form-label">Field {{ field.id }}</label>
-                                        <div class="col">
-                                            <input type="text" class="form-control form-control-sm" name="field_list[]"
-                                                value="{{ field.title }}" required>
-                                        </div>
-                                        <div class="col-auto">
-                                            <button type="button" class="btn btn-sm btn-outline-danger remove-field">
-                                                <i class="fa-solid fa-trash"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                    {% empty %}
-                                    {% endfor %} -->
-                                </ul>
-
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-
-            {% else %}
-
-            <div class="mb-3 row">
-                <label for="InputTitle" class="col-12 col-md-2 col-form-label"><strong>Form Title</strong></label>
-                <div class="col-12 col-md-10">
-                    <input type="text" class="form-control" id="InputTitle" name="form_title" value="" required>
-                </div>
-            </div>
-            <!-- Action Buttons -->
-            <div class="d-inline-flex gap-2 mb-4">
-                <button id="add_grid_btn" type="button" class="btn btn-sm btn-outline-primary">
-                    Table <i class="fa-solid fa-circle-plus"></i>
-                </button>
-                <button id="add_field_btn" type="button" class="btn btn-sm btn-outline-primary">
-                    Field <i class="fa-solid fa-circle-plus"></i>
-                </button>
-            </div>
-            <!-- Container for Dynamic Cards -->
-            <div id="dynamic-forms" class="row row-cols-1 row-cols-md-12 g-4">
-                <!-- Cards will be inserted here -->
-                <div class="col">
-                    <div class="card bg-light">
-                        <div class="card-body">
-                            <label for="Field List" class="form-label">
-                                <strong>Field List</strong>
-                            </label>
-                            <div class="field_container" id="field_container">
-                                <!-- start loop field -->
-                                <div class="mb-1 row align-items-center field-item">
-                                    <label class="col-auto col-form-label">Field ${fieldCount}</label>
-                                    <div class="col">
-                                        <input type="text" class="form-control form-control-sm" name="field_list[]"
-                                            required>
-                                    </div>
-                                    <div class="col-auto">
-                                        <button type="button" class="btn btn-sm btn-outline-danger remove-field">
-                                            <i class="fa-solid fa-trash"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
             <!-- Save Button -->
             <div class="mt-4 text-end">
                 <button type="submit" class="btn btn-primary" id="SaveBtn">Save</button>
@@ -160,7 +63,6 @@
 
 {% block scripts %}
 <script>
-
     // Handle icon rotation for collapse toggles dynamically
     $(document).on('click', '[data-bs-toggle="collapse"]', function () {
         const icon = $(this).find('.rotate-icon');
@@ -175,8 +77,6 @@
             icon.removeClass('rotate');
         });
     });
-
-
 
 
     let tableCount = 0;
@@ -370,7 +270,7 @@
                 });
 
             },
-            error: function (xhr, status, error) {
+            error: function (xhr, status, error ) {
                 Swal.fire(xhr.responseJSON.error);
             }
         });
