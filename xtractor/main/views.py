@@ -123,24 +123,45 @@ def load_template_list(request):
     
 @login_required   
 def template_config(request, pk=None):
-    form = None
-    form_objects = []
+    form = get_object_or_404(
+        FormName.objects.prefetch_related(
+            'formobject_set__type',
+            'formobject_set__headers',
+            'formobject_set__rows',
+        ),
+        pk=pk
+    )
 
-    if pk:  # if editing / viewing an existing FormName
-        form = get_object_or_404(
-            FormName.objects.prefetch_related(
-                'formobject_set__type',
-                'formobject_set__headerobjects_set',
-                'formobject_set__rowobjects_set',
-            ),
-            pk=pk
-        )
-        form_objects = form.formobject_set.all()
+    form_objects_data = []
+    for obj in form.formobject_set.all():
+        headers = [
+            {"id": h.pk, "name": h.header_name, "type": h.header_type}
+            for h in obj.headers.all()
+        ]
+        rows = [
+            {"id": r.pk, "name": r.row_name}
+            for r in obj.rows.all()
+        ]
+
+        form_objects_data.append({
+            "id": obj.pk,
+            "title": obj.title,
+            "type": obj.type.type if obj.type else None,
+            "headers": headers,
+            "rows": rows,
+        })
+
+    # 🔹 Split into fields and tables
+    fields = [item for item in form_objects_data if item["type"] == "Field"]
+    tables = [item for item in form_objects_data if item["type"] == "Table"]
 
     context = {
         "form": form,
-        "form_objects": form_objects,
+        "fields": fields,
+        "tables": tables,
+        "form_objects_data": form_objects_data,  # for debugging
     }
+    
     return render(request, "config.html", context)
 
 
@@ -253,7 +274,8 @@ def template_detail(request, pk):
         ),
         pk=pk
     )
-    
+
+
     context = {
         "form": form,
         "form_objects": form.formobject_set.all()

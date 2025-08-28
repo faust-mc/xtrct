@@ -1,52 +1,383 @@
 {% extends "base.html" %}
 
-{% load static %}
+{% block title %}Template Configuration{% endblock %}
 
 {% block styles %}
 <style>
-    .card-hover {
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-    }
+  .rotate-icon {
+    transition: transform 0.1s ease-in-out;
+  }
 
-    .card-hover:hover {
-        transform: scale(1.03);
-        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-    }
-
-    .card-icon-top-right {
-        position: relative;
-        overflow: hidden;
-    }
-
-    .card-icon-top-right .fa-icon {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        font-size: 2.5rem;
-        color: rgba(0, 0, 0, 0.1);
-        opacity: 0.4;
-        /* Light faded icon */
-        pointer-events: none;
-    }
+  .rotate-icon.rotate {
+    transform: rotate(90deg);
+  }
 </style>
-
 {% endblock %}
 
 {% block content %}
-	{{form}}
-	{% for obj in form.formobject_set.all %}
-  <h3>{{ obj.title }}</h3>
-  <ul>
-    {% for h in obj.headers.all %}
-      <li>Header: {{ h.header_name }} ({{ h.header_type }})</li>
-    {% endfor %}
-    {% for r in obj.rows.all %}
-      <li>Row: {{ r.row_name }}</li>
-    {% endfor %}
-  </ul>
-{% endfor %}
+<main class="container-fluid mb-4">
+  <div class="px-5 rounded">
+    <h2>Template Configuration</h2>
+    <hr>
+    <form id="config_form" action="" method="post">
+      {% csrf_token %}
+      <!-- Form Title -->
+      <div class="mb-3 row">
+        <label for="InputTitle" class="col-12 col-md-2 col-form-label"><strong>Form Title</strong></label>
+        <div class="col-12 col-md-10">
+          <input type="text" class="form-control" id="InputTitle" name="form_title" value="{{form}}" required>
+        </div>
+      </div>
+      <!-- Action Buttons -->
+      <div class="d-inline-flex gap-2 mb-4">
+        <button id="add_grid_btn" type="button" class="btn btn-sm btn-outline-primary">
+          Table <i class="fa-solid fa-circle-plus"></i>
+        </button>
+        <button id="add_field_btn" type="button" class="btn btn-sm btn-outline-primary">
+          Field <i class="fa-solid fa-circle-plus"></i>
+        </button>
+      </div>
+
+      <!-- Container for Dynamic Cards -->
+      <div id="dynamic-forms" class="row row-cols-1 row-cols-md-12 g-4">
+        <!-- Cards will be inserted here -->
+        <div class="col">
+          <div class="card bg-light">
+            <div class="card-body">
+              <label for="Field List" class="form-label">
+                <strong>Field List</strong>
+              </label>
+              <div class="field_container" id="field_container">
+                <!-- start loop field -->
+                {% for obj in form.formobject_set.all %}
+                {% if obj.type|lower == "field" %}
+                <div class="mb-1 row align-items-center field-item">
+                  <label class="col-auto col-form-label">Field {{ forloop.counter }}</label>
+                  <div class="col">
+                    <input type="text" class="form-control form-control-sm" name="field_list[{{obj.pk}}]"
+                      value="{{obj.title}}" required>
+                  </div>
+                  <div class="col-auto">
+                    <button type="button" class="btn btn-sm btn-outline-danger remove-field">
+                      <i class="fa-solid fa-trash"></i>
+                    </button>
+                  </div>
+                </div>
+                {% endif %}
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {% for obj in form.formobject_set.all %}
+        {% if obj.type|lower == "table" %}
+        <div class="col table-card">
+          <div class="card bg-light position-relative">
+            <div class="card-body">
+              <button type="button"
+                class="btn btn-sm btn-outline-danger position-absolute top-0 end-0 m-2 remove-card"><i
+                  class="fa-solid fa-trash"></i></button>
+              <div class="row g-3 align-items-center mb-2">
+                <div class="col-12 col-md-6">
+                  <label for="table_title" class="form-label"><strong>Table Title</strong></label>
+                  <input type="text" class="form-control" id="table_title" name="table_form[{{obj.pk}}][table_title]"
+                    value="{{obj.title}}" required>
+                </div>
+                <div class="col-12 col-md-2">
+                  <label for="row_no" class="form-label">Row No.</label>
+                  <input type="number" class="form-control" id="row_no" name="table_form[{{obj.pk}}][row_no]" required>
+                </div>
+              </div>
+              <div class="d-inline-flex mb-2">
+                <button id="add_header_btn" type="button" class="add_header_btn btn btn-sm btn-outline-primary"
+                  data-table-id="{{obj.pk}}">Column Header
+                  <i class="fa-solid fa-circle-plus"></i></button>
+              </div>
+              <div class="table-container_{{obj.pk}}" data-container-id="{{obj.pk}}">
+                {% for h in obj.headers.all %}
+                {% if h.header_type|lower == 'label' %}
+                <div class="d-flex align-items-center mb-2">
+                  <div class="form-floating me-2">
+                    <input type="text" class="form-control form-control-sm w-auto"
+                      name="table_form[{{obj.pk}}][header][label]" id="table_header{{obj.pk}}" placeholder="Header 1"
+                      value="{{h.header_name}}">
+                    <label for="table_header{{obj.pk}}">Header {{ forloop.counter }}</label>
+                  </div>
+                  <button type="button" id="add_label_btn" class="add_label_btn btn btn-sm btn-outline-primary me-2"
+                    data-table-id="{{obj.pk}}"><i class="fa-solid fa-circle-plus"></i></button>
+                  <button type="button" class="btn btn-sm btn-outline-success toggle-arrow" data-bs-toggle="collapse"
+                    data-bs-target="#treeHead_{{obj.pk}}" aria-expanded="true" aria-controls="treeHead_{{obj.pk}}">
+                    <i class="fas fa-chevron-right rotate-icon rotate"></i>
+                  </button>
+                </div>
+                <div class="ps-4 collapse show treeHead_{{obj.pk}}" id="treeHead_{{obj.pk}}">
+                  {% for r in obj.rows.all %}
+                  <div class="mb-1 row align-items-center label-item">
+                    <label for="header_label{{obj.pk}} {{ forloop.counter }}" class="col-auto col-form-label">Label
+                      {{ forloop.counter }}</label>
+                    <div class="col">
+                      <input type="text" class="form-control form-control-sm"
+                        name="table_form[{{obj.pk}}][header][label][]" id="header_label{{obj.pk}} {{ forloop.counter }}"
+                        value="{{r.row_name}}" required>
+                    </div>
+                    <div class="col-auto">
+                      <button type="button" class="btn btn-sm btn-outline-danger remove-label">
+                        <i class="fa-solid fa-trash"></i>
+                      </button>
+                    </div>
+                  </div>
+                  {% endfor %}
+                </div>
+                {% else %}
+                <div class="d-flex align-items-center mb-2 header-item">
+                  <div class="form-floating me-2">
+                    <input type="text" class="form-control form-control-sm w-auto"
+                      id="table_header{{obj.pk}}{{ forloop.counter }}" name="table_form[{{obj.pk}}][header][]"
+                      placeholder="Header {{ forloop.counter }}" value="{{h.header_name}}" required>
+                    <label for="table_form{{obj.pk}}{{ forloop.counter }}">Header {{ forloop.counter }}</label>
+                  </div>
+                  <button type="button" class="btn btn-sm btn-outline-danger remove-header">
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
+                </div>
+                {% endif %}
+                {% endfor %}
+
+
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+      </div>
+
+      <!-- Save Button -->
+      <div class="mt-4 text-end">
+        <button type="submit" class="btn btn-primary" id="SaveBtn">Save</button>
+      </div>
+    </form>
+  </div>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Handle icon rotation for collapse toggles dynamically
+  $(document).on('click', '[data-bs-toggle="collapse"]', function () {
+    const icon = $(this).find('.rotate-icon');
+    const targetSelector = $(this).attr('data-bs-target');
+    const target = $(targetSelector);
+
+    // Listen for collapse events just for this target
+    target.on('shown.bs.collapse', function () {
+      icon.addClass('rotate');
+    });
+    target.on('hidden.bs.collapse', function () {
+      icon.removeClass('rotate');
+    });
+  });
+
+
+  let tableCount = 0;
+  let fieldCount = 0;
+  const headerCounters = {}; // Store header counts per table
+  const labelCounters = {}; // Store header counts per table
+
+  $(document).on('click', '#add_header_btn', function () {
+    const tableId = $(this).data('table-id'); // Get table count from data attribute
+
+    // Create unique header index
+    if (!headerCounters[tableId]) {
+      headerCounters[tableId] = 2;
+    } else {
+      headerCounters[tableId]++;
+    }
+
+    const headerCount = headerCounters[tableId];
+
+    const container = $(`.table-container_${tableId}`);
+
+    const newHeader = `
+        <div class="d-flex align-items-center mb-2 header-item">
+            <div class="form-floating me-2">
+                <input type="text" class="form-control form-control-sm w-auto" id="table_header${tableId}${headerCount}"
+                    name="table_form[${tableId}][header][]" placeholder="Header ${headerCount}" required>
+                <label for="table_form${tableId}${headerCount}">Header ${headerCount}</label>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-danger remove-header">
+                <i class="fa-solid fa-trash"></i>
+            </button>
+        </div>
+    `;
+    container.append(newHeader);
+  });
+
+  $(document).on('click', '#add_label_btn', function () {
+    const tableId = $(this).data('table-id'); // Get table count from data attribute
+
+    // Create unique header index
+    if (!labelCounters[tableId]) {
+      labelCounters[tableId] = 1;
+    } else {
+      labelCounters[tableId]++;
+    }
+
+    const labelCount = labelCounters[tableId];
+
+    const container = $(`.treeHead_${tableId}`);
+
+    const newLabel = `
+        <div class="mb-1 row align-items-center label-item">
+            <label for="header_label${tableId}${labelCount}" class="col-auto col-form-label">Label ${labelCount}</label>
+            <div class="col">
+                <input type="text" class="form-control form-control-sm" name="table_form[${tableId}][header][label][]" id="header_label${tableId}${labelCount}" required>
+            </div>
+            <div class="col-auto">
+                <button type="button" class="btn btn-sm btn-outline-danger remove-label">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `;
+    container.append(newLabel);
+  });
+
+  $(document).on('click', '#add_field_btn', function () {
+    fieldCount++;
+    const fieldInput = `
+           <div class="mb-1 row align-items-center field-item">
+                <label class="col-auto col-form-label">Fieldname</label>
+                <div class="col">
+                    <input type="text" class="form-control form-control-sm" name="field_list[]" required>
+                </div>
+                <div class="col-auto">
+                    <button type="button" class="btn btn-sm btn-outline-danger remove-field">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+    $('#field_container').append(fieldInput);
+  });
+  // Add Table
+  $('#add_grid_btn').on('click', function () {
+    tableCount++;
+    const tableForm = `
+           <div class="col table-card">
+            <div class="card bg-light position-relative">
+                <div class="card-body">
+                    <button type="button" class="btn btn-sm btn-outline-danger position-absolute top-0 end-0 m-2 remove-card"><i class="fa-solid fa-trash"></i></button>
+                    <div class="row g-3 align-items-center mb-2">
+                        <div class="col-12 col-md-6">
+                            <label for="table_title" class="form-label"><strong>Table Title</strong></label>
+                            <input type="text" class="form-control" id="table_title"
+                                name="table_form[${tableCount}][table_title]" required>
+                        </div>
+                        <div class="col-12 col-md-2">
+                            <label for="row_no" class="form-label">Row No.</label>
+                            <input type="number" class="form-control" id="row_no"
+                                name="table_form[${tableCount}][row_no]" required>
+                        </div>
+                    </div>
+                    <div class="d-inline-flex mb-2">
+                        <button id="add_header_btn" type="button" class="add_header_btn btn btn-sm btn-outline-primary" data-table-id="${tableCount}">Column Header
+                            <i class="fa-solid fa-circle-plus"></i></button>
+                    </div>
+                    <div class="table-container_${tableCount}" data-container-id="${tableCount}">
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="form-floating me-2">
+                                <input type="text" class="form-control form-control-sm w-auto"
+                                    name="table_form[${tableCount}][header][label]" id="table_header${tableCount}"
+                                    placeholder="Header 1">
+                                <label for="table_header${tableCount}">Header 1</label>
+                            </div>
+                            <button type="button" id="add_label_btn" class="add_label_btn btn btn-sm btn-outline-primary me-2" data-table-id="${tableCount}"><i
+                                    class="fa-solid fa-circle-plus"></i></button>
+                            <button type="button" class="btn btn-sm btn-outline-success toggle-arrow"
+                                data-bs-toggle="collapse" data-bs-target="#treeHead_${tableCount}" aria-expanded="true"
+                                aria-controls="treeHead_${tableCount}">
+                                <i class="fas fa-chevron-right rotate-icon rotate"></i>
+                            </button>
+                        </div>
+                        <div class="ps-4 collapse show treeHead_${tableCount}" id="treeHead_${tableCount}">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        `;
+    $('#dynamic-forms').append(tableForm);
+  });
+
+
+  // Remove Field (event delegation for dynamic items)
+  $(document).on('click', '.remove-field', function () {
+    if (confirm('Are you sure you want to remove this section?')) {
+      $(this).closest('.field-item').remove();
+    }
+  });
+
+  // Remove Header (event delegation for dynamic items)
+  $(document).on('click', '.remove-header', function () {
+    if (confirm('Are you sure you want to remove this section?')) {
+      $(this).closest('.header-item').remove();
+    }
+  });
+
+  // Remove label (event delegation for dynamic items)
+  $(document).on('click', '.remove-label', function () {
+    if (confirm('Are you sure you want to remove this section?')) {
+      $(this).closest('.label-item').remove();
+    }
+  });
+
+  // Remove any card on click of .remove-card
+  $(document).on('click', '.remove-card', function () {
+    const $card = $(this).closest('.table-card');
+    if (confirm('Are you sure you want to remove this section?')) {
+      $card.remove();
+    }
+  });
+
+  // Save action
+  // $('#saveBtn').on('click', function () {
+  //     alert('Saving data... (You can connect this to AJAX or form submission)');
+  // });
+
+  $('#config_form').on('submit', function (event) {
+    event.preventDefault();
+
+    var formData = $(this).serialize();
+
+    $.ajax({
+      url: "{% url 'main:submit_form_ajax' %}",
+      type: 'POST', //
+      headers: {
+        'X-CSRFToken': $('input[name="csrfmiddlewaretoken"]').val() // Get CSRF token
+      },
+      data: formData,
+      success: function (response) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Success',
+          text: 'Form configuration successfully added',
+          showConfirmButton: true
+        }).then((result) => {
+          if (result.isConfirmed) {
+            window.location.href = response.redirect_url;
+          }
+        });
+
+      },
+      error: function (xhr, status, error) {
+        Swal.fire(xhr.responseJSON.error);
+      }
+    });
+  });
+</script>
+
 
 
 {% endblock %}
-
-
