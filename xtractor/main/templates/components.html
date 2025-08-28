@@ -54,7 +54,7 @@
                 <div class="mb-1 row align-items-center field-item">
                   <label class="col-auto col-form-label">Field {{ forloop.counter }}</label>
                   <div class="col">
-                    <input type="text" class="form-control form-control-sm" name="field_list[{{obj.pk}}]"
+                    <input type="text" class="form-control form-control-sm" name="field_list[]"
                       value="{{obj.title}}" required>
                   </div>
                   <div class="col-auto">
@@ -84,10 +84,10 @@
                   <input type="text" class="form-control" id="table_title" name="table_form[{{obj.pk}}][table_title]"
                     value="{{obj.title}}" required>
                 </div>
-                <div class="col-12 col-md-2">
+                <!-- <div class="col-12 col-md-2">
                   <label for="row_no" class="form-label">Row No.</label>
                   <input type="number" class="form-control" id="row_no" name="table_form[{{obj.pk}}][row_no]" required>
-                </div>
+                </div> -->
               </div>
               <div class="d-inline-flex mb-2">
                 <button id="add_header_btn" type="button" class="add_header_btn btn btn-sm btn-outline-primary"
@@ -352,7 +352,7 @@
     var formData = $(this).serialize();
 
     $.ajax({
-      url: "{% url 'main:submit_form_ajax' %}",
+      url: "{% url 'main:edit_form_ajax' form.pk %}",
       type: 'POST', //
       headers: {
         'X-CSRFToken': $('input[name="csrfmiddlewaretoken"]').val() // Get CSRF token
