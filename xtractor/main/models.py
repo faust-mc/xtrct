@@ -31,7 +31,8 @@ from django.contrib.auth.models import User
 
 class FormName(models.Model):
     name = models.CharField(max_length=40, null=True, blank=True)
-
+    status = models.IntegerField(default=1)
+    
     def __str__(self):
         return self.name
 

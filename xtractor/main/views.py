@@ -87,7 +87,7 @@ def load_template_list(request):
     order_direction = request.POST.get('order[0][dir]', 'asc')
 
     # 🔹 Query all records from DB
-    qs = FormName.objects.all()
+    qs = FormName.objects.filter(status=1)
 
     # 🔹 Filtering (LIKE query)
     if search_value:
@@ -353,6 +353,20 @@ def edit_form_ajax(request, pk):
         import traceback
         traceback.print_exc()
         return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+
+
+def disable_form_ajax(request, pk):
+    if request.method == "POST":  # ensure it's called via POST
+        try:
+            form = FormName.objects.get(pk=pk)
+            form.status = 0  # disable
+            form.save()
+            return JsonResponse({"success": True, "message": f"{form.name} disabled successfully."})
+        except FormName.DoesNotExist:
+            raise Http404("Form not found")
+    return JsonResponse({"success": False, "message": "Invalid request method"})
 
 
 
