@@ -17,7 +17,13 @@
 {% block content %}
 <main class="container-fluid mb-4">
   <div class="px-5 rounded">
-    <h2>Template Configuration</h2>
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h2 class="mb-0">Template Configuration</h2>
+      <div class="form-check form-switch ms-3">
+        <input class="form-check-input" type="checkbox" id="yesNoSwitch" name="yes_no" value="yes">
+        <label class="form-check-label ms-2" for="yesNoSwitch">Edit Mode</label>
+      </div>
+    </div>
     <hr>
     <form id="config_form" action="" method="post">
       {% csrf_token %}
@@ -164,6 +170,22 @@
 
 {% block scripts %}
 <script>
+
+
+  $(document).ready(function () {
+    function toggleInputs() {
+      const isChecked = $("#yesNoSwitch").is(":checked");
+      $("#config_form").find("input, select, textarea, button").prop("disabled", !isChecked);
+    }
+
+    // Run once on page load
+    toggleInputs();
+    // Toggle on switch change
+    $("#yesNoSwitch").on("change", toggleInputs);
+  });
+
+
+
   // Handle icon rotation for collapse toggles dynamically
   $(document).on('click', '[data-bs-toggle="collapse"]', function () {
     const icon = $(this).find('.rotate-icon');
