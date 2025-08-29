@@ -52,10 +52,57 @@
                         let detailUrl = "{% url 'main:template_detail' 0 %}".replace("0", row.id);
                         return `
                             <a href="${detailUrl}" class="btn btn-sm btn-primary">Edit</a>
+                            <a type="button" id="deactivatebtn" data-id="${row.id}" class="btn btn-sm btn-danger">Deactivate</a>
                         `;
                     }
                 }
             ]
+        });
+
+        $(document).on("click", "#deactivatebtn", function () {
+            var id = $(this).data("id");
+            let detailUrl = "{% url 'main:disable_form_ajax' 0 %}".replace("0", id);
+
+            Swal.fire({
+                title: "Are you sure?",
+                text: "Do you want to deactivate this template?",
+                icon: "question",
+                showCancelButton: true,
+                confirmButtonText: "Ok",
+                cancelButtonText: "Cancel",
+                reverseButtons: true
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: detailUrl, // <-- your Django view
+                        type: "POST",
+                        data: $(this).serialize(), // send form data
+                        headers: {
+                            'X-CSRFToken': $('input[name="csrfmiddlewaretoken"]').val() // Get CSRF token
+                        },
+                        success: function (response) {
+                            Swal.fire({
+                                icon: "success",
+                                title: "Saved!",
+                                text: response.message,
+                                timer: 2000,
+                                showConfirmButton: false
+                            });
+
+                            table.ajax.reload(null, false);
+                        },
+                        error: function (xhr, status, error) {
+                            Swal.fire({
+                                icon: "error",
+                                title: "Error!",
+                                text: "Something went wrong: " + error
+                            });
+                        }
+                    });
+                }
+            });
+
+
         });
     });
 </script>

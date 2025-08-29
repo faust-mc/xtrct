@@ -318,7 +318,7 @@ def edit_form_ajax(request, pk):
 
 
 
-
+@csrf_exempt
 def disable_form_ajax(request, pk):
     if request.method == "POST":  # ensure it's called via POST
         try:

@@ -253,9 +253,6 @@
         $.ajax({
             url: "{% url 'main:submit_form_ajax' %}",
             type: 'POST', //
-            headers: {
-                'X-CSRFToken': $('input[name="csrfmiddlewaretoken"]').val() // Get CSRF token
-            },
             data: formData,
             success: function (response) {
                 Swal.fire({
