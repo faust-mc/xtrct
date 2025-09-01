@@ -7,6 +7,7 @@ from .forms import TypeForm, FormObjectForm, HeaderObjectsForm, RowObjectsForm, 
 import json
 from collections import defaultdict
 import re
+import numpy as np
 from django.db import transaction
 from django.contrib import messages
 from django.contrib.auth import logout, update_session_auth_hash
@@ -351,9 +352,130 @@ def template_detail(request, pk):
     return render(request, "components.html", context)
 
 
+
+
+def compute_ocr_reliability(ocr_json, low_conf_threshold=0.5):
+    """
+    Compute a reliability score for Azure OCR-style JSON with explainability breakdown.
+    
+    Args:
+        ocr_json (dict): Azure OCR JSON response.
+        low_conf_threshold (float): Confidence threshold to consider a word low quality.
+    
+    Returns:
+        dict with scoring details and breakdown.
+    """
+    width = ocr_json.get("metadata", {}).get("width", 1)
+    height = ocr_json.get("metadata", {}).get("height", 1)
+    img_area = width * height
+
+    words = []
+    for block in ocr_json.get("readResult", {}).get("blocks", []):
+        for line in block.get("lines", []):
+            for w in line.get("words", []):
+                words.append(w)
+
+    if not words:
+        return {
+            "score": 0,
+            "breakdown": {
+                "average_conf": 0,
+                "low_conf_ratio": 1,
+                "density": 0,
+                "num_words": 0,
+                "confidence_contrib": 0,
+                "low_conf_contrib": 0,
+                "density_contrib": 0
+            }
+        }
+
+    # Confidence values
+    confs = [w["confidence"] for w in words if "confidence" in w]
+    avg_conf = float(np.mean(confs))
+
+    # Low-confidence ratio
+    low_conf_ratio = float(np.mean([c < low_conf_threshold for c in confs])) if confs else 1
+
+    # Text density (characters per pixel)
+    total_chars = sum(len(w.get("text", "")) for w in words)
+    density = total_chars / img_area if img_area > 0 else 0
+
+    # Contributions
+    conf_contrib = avg_conf * 70
+    low_conf_contrib = (1 - low_conf_ratio) * 20
+    density_contrib = min(density * 1e6, 10)
+
+    score = conf_contrib + low_conf_contrib + density_contrib
+
+    return {
+        "score": round(min(score, 100), 2),
+        "breakdown": {
+            "average_conf": round(avg_conf, 3),
+            "low_conf_ratio": round(low_conf_ratio, 3),
+            "density": round(density, 8),
+            "num_words": len(words),
+            "confidence_contrib": round(conf_contrib, 2),
+            "low_conf_contrib": round(low_conf_contrib, 2),
+            "density_contrib": round(density_contrib, 2)
+        }
+    }
+
+
+# Example view
+def get_ave(request):
+    with open("main/samp3json.json") as f:
+        ocr_json = json.load(f)
+
+    result = compute_ocr_reliability(ocr_json)
+    return JsonResponse(result, json_dumps_params={"indent": 2})
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 def sample(request):
     
     return render(request, 'sample.html')
+
+
 
 # def template_config(request):
 #     # if this is a POST request we need to process the form data
