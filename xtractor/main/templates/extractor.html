@@ -112,7 +112,6 @@
 
 {% block scripts %}
 
-
 <script>
     var sample_data = {
         "extracted_table": [
@@ -184,8 +183,6 @@
             "ACTUAL COUNT:": "6.820"
         }
     }
-
-
 
     $(document).ready(function () {
         // Render extracted fields
@@ -277,8 +274,8 @@
     Dropzone.autoDiscover = false;
 
     const myDropzone = new Dropzone("#myDropzone", {
-        url: "{% url 'main:submit_form_extractor' %}",
-        paramName: "file",
+        url: "{% url 'main:get_ave' %}",   // Django URL
+        paramName: "file",                // match your Django view
         maxFiles: 1,
         maxFilesize: 250,
         acceptedFiles: "image/*,application/pdf",
@@ -292,17 +289,50 @@
             });
 
             this.on("success", function (file, response) {
-                console.log("Uploaded:", response);
-                file.serverId = response.filename;
-            });
+    console.log("Uploaded:", response);
 
-            this.on("removedfile", function (file) {
-                if (file.serverId) {
-                    fetch(`/delete/${file.serverId}`, { method: "DELETE" })
-                        .then(res => res.json())
-                        .then(data => console.log("Deleted:", data))
-                        .catch(err => console.error("Delete failed", err));
-                }
+    // Build a nicely formatted HTML view
+    let htmlContent = `
+        <div style="text-align:left;">
+            <h6>Reliability Score</h6>
+            <p style="font-size:1.2em;"><strong>${response.score.toFixed(2)}%</strong></p>
+            <hr>
+            ${response.breakdown ? `
+            <h6>Breakdown</h6>
+            <ul style="padding-left:20px;">
+                ${Object.entries(response.breakdown).map(([key, val]) => {
+                    // Format decimals nicely
+                    let displayVal = (typeof val === "number" && val < 1) ? (val*100).toFixed(2)+"%" : val;
+                    return `<li><strong>${key}:</strong> ${displayVal}</li>`;
+                }).join("")}
+            </ul>
+            ` : ""}
+        </div>
+    `;
+
+    // Show SweetAlert with styled content
+    Swal.fire({
+        title: "OCR Result",
+        html: htmlContent,
+        icon: "info",
+        width: 600,
+        showCancelButton: true,
+        confirmButtonText: "Proceed",
+        cancelButtonText: "Cancel",
+        customClass: { popup: 'swal-wide' }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire("Proceeding...", "", "success");
+            // trigger next action here
+        } else {
+            Swal.fire("Cancelled", "You cancelled the operation", "error");
+        }
+    });
+});
+
+
+            this.on("error", function (file, errorMessage) {
+                Swal.fire("Upload Failed", errorMessage, "error");
             });
         }
     });

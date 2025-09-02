@@ -1,20 +1,23 @@
-from django.http import JsonResponse, HttpResponseRedirect
+import re
+import os
+import json
+import requests
+import numpy as np
+from django.urls import reverse
+from django.conf import settings
+from django.db import transaction
+from collections import defaultdict
+from django.contrib import messages
+from .services.azure_vision import analyze_image
+from django.contrib.auth.views import LoginView
 from django.views.decorators.csrf import csrf_exempt
-
+from django.contrib.auth.hashers import check_password
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse, HttpResponseRedirect
+from django.contrib.auth import logout, update_session_auth_hash
 from django.shortcuts import render, redirect, get_object_or_404
 from .models import  ComponentType, FormObject, HeaderObjects, RowObjects, FieldObject, FormName
 from .forms import TypeForm, FormObjectForm, HeaderObjectsForm, RowObjectsForm, FieldObjectForm, ChangePasswordForm
-import json
-from collections import defaultdict
-import re
-from django.db import transaction
-from django.contrib import messages
-from django.contrib.auth import logout, update_session_auth_hash
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.hashers import check_password
-from django.contrib.auth.views import LoginView
-from django.urls import reverse
-
 
 
 class CustomLoginView(LoginView):
@@ -121,10 +124,13 @@ def load_template_list(request):
     return JsonResponse(response)
 
     
+<<<<<<< HEAD
 @login_required   
 def template_config(request, pk=None):
     
     return render(request, "config.html")
+=======
+>>>>>>> 8bfa44fd6ec0ed3ad742937fc6ef48e465824e5f
 
 
 
@@ -190,7 +196,7 @@ def submit_form_ajax(request):
                 t1 = FormObject(form_name=form_name, type=component_table, title=v['table_title'])
                 t1.save()
 
-                if v['label_header'].strip() != '':
+                if v['label_header'].strip() != 'N/A':
                     header_label = HeaderObjects(form_object=t1, header_name=v['label_header'], header_type='label')
                     header_label.save()
 
@@ -352,9 +358,150 @@ def template_detail(request, pk):
     return render(request, "components.html", context)
 
 
+
+
+def compute_ocr_reliability(ocr_json, low_conf_threshold=0.5):
+    """
+    Compute a reliability score for Azure OCR-style JSON with explainability breakdown.
+    """
+    width = ocr_json.get("metadata", {}).get("width", 1)
+    height = ocr_json.get("metadata", {}).get("height", 1)
+    img_area = width * height
+
+    words = []
+    for block in ocr_json.get("readResult", {}).get("blocks", []):
+        for line in block.get("lines", []):
+            for w in line.get("words", []):
+                words.append(w)
+
+    if not words:
+        return {
+            "score": 0,
+            "breakdown": {
+                "average_conf": 0,
+                "low_conf_ratio": 1,
+                "density": 0,
+                "num_words": 0,
+                "confidence_contrib": 0,
+                "low_conf_contrib": 0,
+                "density_contrib": 0
+            }
+        }
+
+    # Confidence values
+    confs = [w["confidence"] for w in words if "confidence" in w]
+    avg_conf = float(np.mean(confs))
+
+    # Low-confidence ratio
+    low_conf_ratio = float(np.mean([c < low_conf_threshold for c in confs])) if confs else 1
+
+    # Text density (characters per pixel)
+    total_chars = sum(len(w.get("text", "")) for w in words)
+    density = total_chars / img_area if img_area > 0 else 0
+
+    # Contributions
+    conf_contrib = avg_conf * 70
+    low_conf_contrib = (1 - low_conf_ratio) * 20
+    density_contrib = min(density * 1e6, 10)
+
+    score = conf_contrib + low_conf_contrib + density_contrib
+
+    return {
+        "score": round(min(score, 100), 2),
+        "breakdown": {
+            "average_conf": round(avg_conf, 3),
+            "low_conf_ratio": round(low_conf_ratio, 3),
+            "density": round(density, 8),
+            "num_words": len(words),
+            "confidence_contrib": round(conf_contrib, 2),
+            "low_conf_contrib": round(low_conf_contrib, 2),
+            "density_contrib": round(density_contrib, 2)
+        }
+    }
+
+
+@csrf_exempt  # remove if you’re handling CSRF properly
+def get_ave(request):
+    """
+    Handles uploaded image file and returns OCR reliability score with breakdown.
+    Accepts multipart form-data with 'file' field.
+    """
+    image_file = request.FILES.get("file")
+    if not image_file:
+        return JsonResponse({"error": "Missing uploaded image file"}, status=400)
+
+    # Call Azure OCR
+    ocr_json = analyze_image(image_file)
+
+    # If Azure OCR returned an error
+    if "error" in ocr_json:
+        return JsonResponse({"error": ocr_json["error"]}, status=500)
+
+    # Compute reliability score
+    result = compute_ocr_reliability(ocr_json)
+    print(result)
+    return JsonResponse(result, json_dumps_params={"indent": 2})
+
+
+def upload_form(request):
+    return render(request, 'ocr_upload.html')
+
+
+
+
+
+
+
+
+
+
+
+@login_required   
+def template_config(request, pk=None):
+    
+    return render(request, "config.html")
+
+
+
+@login_required
+def extractor(request):
+    
+    return render(request, 'extractor.html')
+
+def get_values(counter, key, value):
+
+    return 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 def sample(request):
     
     return render(request, 'sample.html')
+
+
 
 # def template_config(request):
 #     # if this is a POST request we need to process the form data
@@ -400,19 +547,48 @@ def sample(request):
    
 
 
+def is_same_column(header_bbox, cell_bbox):
+    header_xs = [p["x"] for p in header_bbox]
+    cell_xs = [p["x"] for p in cell_bbox]
+
+    header_left = min(header_xs)
+    header_right = max(header_xs)
+
+    cell_left = min(cell_xs)
+    cell_right = max(cell_xs)
+
+    # Overlap condition (any horizontal overlap)
+    overlaps = not (cell_right < header_left or cell_left > header_right)
+
+    # Fully contained condition (cell box entirely inside header box)
+    fully_within = (cell_left >= header_left and cell_right <= header_right)
+
+    # Return True if either overlaps or fully contained
+    return overlaps or fully_within
+
+
+
+def get_center(bbox):
+    xs = [p["x"] for p in bbox]
+    ys = [p["y"] for p in bbox]
+    return (sum(xs) / 4, sum(ys) / 4)
+
+
+
 
 
 
 @csrf_exempt
 @login_required
 def ocr_result_view(request):
-    form_name = FormName.objects.get(name="Samp")
+    form_name = FormName.objects.get(name="EGG QUANTITY RECEIVED FORM")
+
     # EGG QUANTITY RECEIVED FORM
     # Samp
     # Form Name
-    print(form_name)
-    # with open("main/samp3json.json") as f:
-    with open("main/samp6.json") as f:
+    
+    with open("main/samp3json.json") as f:
+    # with open("main/samp6.json") as f:
         ocr_data = json.load(f)
     lines = [] #line of texts extracted
     for block in ocr_data["readResult"]["blocks"]:
@@ -428,7 +604,7 @@ def ocr_result_view(request):
     
     fields_to_find = list(
         FormObject.objects
-        .filter(form_name=form_name, type=2)
+        .filter(form_name=form_name, form_type__form_type="Field")
         .values_list('title', flat=True)  # change 'title' to the correct field name
     )
 
@@ -455,11 +631,10 @@ def ocr_result_view(request):
     tables = []
     table_name = list(
         FormObject.objects
-        .filter(form_name=form_name, type=1)
+        .filter(form_name=form_name, form_type__form_type="Table")
         .values_list('title', flat=True)  # change 'title' to the correct field name
     )
-    print(table_name)
-    print()
+  
     # table_name = ["05-01-25"]
     # table_name = ["04- 30 -25"]
     
