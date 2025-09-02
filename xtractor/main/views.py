@@ -128,17 +128,6 @@ def template_config(request, pk=None):
 
 
 
-@login_required
-def extractor(request):
-    
-    return render(request, 'extractor.html')
-
-def get_values(counter, key, value):
-
-    return 
-
-
-
 def submit_form_ajax(request):
     if request.method != 'POST':
         return JsonResponse({"success": False, "error": "Invalid request method"}, status=405)
@@ -329,6 +318,18 @@ def disable_form_ajax(request, pk):
         except FormName.DoesNotExist:
             raise Http404("Form not found")
     return JsonResponse({"success": False, "message": "Invalid request method"})
+
+
+@login_required
+def extractor(request):
+    
+    return render(request, 'extractor.html')
+
+
+@login_required
+def submit_form_extractor(request):
+    
+    return render(request, 'extractor.html')
 
 
 

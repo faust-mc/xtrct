@@ -2,7 +2,7 @@ from django.urls import path
 from django.contrib.auth import views as auth_views
 
 
-from .views import (ocr_result_view, quantity_graded_eggs, extract_table_rows_from_file, template_list, load_template_list, template_config, login,index, submit_form_ajax, extractor, sample, logout_request, CustomLoginView, change_password, template_detail, edit_form_ajax, disable_form_ajax)
+from .views import (ocr_result_view, quantity_graded_eggs, extract_table_rows_from_file, template_list, load_template_list, template_config, login,index, submit_form_ajax, extractor, submit_form_extractor , sample, logout_request, CustomLoginView, change_password, template_detail, edit_form_ajax, disable_form_ajax)
 
 
 app_name = 'main'
@@ -18,14 +18,15 @@ urlpatterns = [
     path("template_config/", template_config, name="template_config"),
 
     path("template_config/<int:pk>", template_config, name="template_config_edit"),
-    
+    path("template_detail/<int:pk>/", template_detail, name="template_detail"),
     
     path('submit_form_ajax/', submit_form_ajax, name='submit_form_ajax'),
+    
     path('edit_form_ajax/<int:pk>', edit_form_ajax, name="edit_form_ajax"),
     path('disable_form_ajax/<int:pk>', disable_form_ajax, name="disable_form_ajax"),
-
-    path("template_detail/<int:pk>/", template_detail, name="template_detail"),
+    
     path("extractor/", extractor, name="extractor"),
+    path("submit_form_extractor/", submit_form_extractor, name="submit_form_extractor"),
     
     path("sample1/", ocr_result_view, name="ocr-result"),
     path("sample2/", quantity_graded_eggs, name="quantity_graded_eggs"),
