@@ -124,13 +124,10 @@ def load_template_list(request):
     return JsonResponse(response)
 
     
-<<<<<<< HEAD
 @login_required   
 def template_config(request, pk=None):
     
     return render(request, "config.html")
-=======
->>>>>>> 8bfa44fd6ec0ed3ad742937fc6ef48e465824e5f
 
 
 
