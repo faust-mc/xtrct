@@ -3,8 +3,7 @@
 {% block title %}Text Extractor{% endblock %}
 
 {% block styles %}
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dropzone/5.9.3/dropzone.min.css">
-<link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.0-rc.0/css/select2.min.css" rel="stylesheet" />
+
 <style>
     .dropzone {
         border: 2px dashed #007bff;
@@ -24,11 +23,13 @@
         color: #555;
     }
 
-    .form-floating > .select2-container--default .select2-selection--single {
+    /* Fix for Select2 inside form-floating */
+    .form-floating>.select2-container--default .select2-selection--single {
         height: calc(3.5rem + 2px);
         padding-top: 1.625rem;
     }
-    .form-floating > label {
+
+    .form-floating>label {
         padding: 0.75rem 0.75rem;
     }
 </style>
@@ -56,9 +57,52 @@
         </div>
 
         <!-- Dropzone Area -->
-        <form class="dropzone mb-3" id="myDropzone">
+        <form action="{% url 'main:submit_form_extractor' %}" class="dropzone mb-3" id="myDropzone">
+            {% csrf_token %}
             <div class="dz-message">Drop an image or PDF here, or click to select</div>
         </form>
+
+        <!-- Button trigger modal -->
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#staticPreview">
+            Launch static backdrop modal
+        </button>
+
+        <!-- Modal -->
+        <div class="modal fade" id="staticPreview" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+            aria-labelledby="staticPreviewLabel" aria-hidden="true">
+            <div class="modal-dialog modal-xl modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="staticPreviewLabel">Preview</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="upload_result_form" action="" method="post">
+                            {% csrf_token %}
+                            <div id="dynamic-forms" class="row row-cols-1 row-cols-md-12 g-4">
+                                <div class="col">
+                                    <label for="Field List" class="form-label">
+                                        <strong>Extracted Fields</strong>
+                                    </label>
+                                    <div id="field_container"></div>
+                                </div>
+
+                                <div class="col">
+                                    <label class="form-label">
+                                        <strong>Extracted Tables</strong>
+                                    </label>
+                                    <div id="table_container"></div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary">Proceed</button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- Upload Button -->
         <button id="ConvertBtn" class="btn btn-primary" type="button">Convert</button>
@@ -67,17 +111,163 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/dropzone/5.9.3/min/dropzone.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.0-rc.0/js/select2.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
+    var sample_data = {
+        "extracted_table": [
+            {
+                "COLLECTED GOOD EGGS": {
+                    "SUPER JUMBO": {
+                        "QUANTITY": "N/A",
+                        "TOTAL": "137"
+                    },
+                    "JUMBO": {
+                        "QUANTITY": "2cs - 4Ty - 5",
+                        "TOTAL": "845"
+                    },
+                    "EXTRA LARGE": {
+                        "QUANTITY": "Gcs - 4Ty - 21",
+                        "TOTAL": "2.30"
+                    },
+                    "LARGE": {
+                        "QUANTITY": "4cs - 7Ty",
+                        "TOTAL": "2.010"
+                    },
+                    "MEDIUM": {
+                        "QUANTITY": "CS - 12'",
+                        "TOTAL": "462"
+                    },
+                    "SMALL": {
+                        "QUANTITY": "N/A",
+                        "TOTAL": "125"
+                    },
+                    "EXTRA SMALL": {
+                        "QUANTITY": "N/A",
+                        "TOTAL": "19"
+                    },
+                    "PEWEE": {
+                        "QUANTITY": "N/A",
+                        "TOTAL": "2"
+                    }
+                }
+            },
+            {
+                "COLLECTED REJECT EGGS": {
+                    "SLIGHTLY DIRTY": {
+                        "ACCUMULATOR": "78",
+                        "CANDLING": "N/A",
+                        "TAKE AWAY": "N/A",
+                        "BYPASS": "N/A",
+                        "TOTAL": "78"
+                    },
+                    "DIRTY YOLK": {
+                        "ACCUMULATOR": "33",
+                        "CANDLING": "8",
+                        "TAKE AWAY": "N/A",
+                        "BYPASS": ".",
+                        "TOTAL": "44"
+                    },
+                    "DIRTY BLOOD": {
+                        "ACCUMULATOR": "13",
+                        "CANDLING": "N/A",
+                        "TAKE AWAY": "N/A",
+                        "BYPASS": "N/A",
+                        "TOTAL": "16"
+                    }
+                }
+            }
+        ],
+        "extracted_fields": {
+            "START:": "7:28 am",
+            "END:": "9:05 am",
+            "ACTUAL COUNT:": "6.820"
+        }
+    }
+
     $(document).ready(function () {
-        $('#template').select2({
-            placeholder: "-- Choose type --",
-            allowClear: true,
-            width: '100%'
+        // Render extracted fields
+        $.each(sample_data.extracted_fields, function (field, value) {
+            $("#field_container").append(`
+                <div class="mb-1 row align-items-center field-item">
+                    <label class="col-auto col-form-label">${field}</label>
+                    <div class="col">
+                        <input type="text" 
+                               class="form-control form-control-sm field-input" 
+                               name="fields[${field}]" 
+                               value="${value}" 
+                               data-field="${field}">
+                    </div>
+                </div>
+            `);
+        });
+
+        // Render extracted tables
+        $.each(sample_data.extracted_table, function (i, tableObj) {
+            let tableName = Object.keys(tableObj)[0];
+            let rows = tableObj[tableName];
+
+            let tableHtml = `<div class="mb-3"><h5>${tableName}</h5>
+                                <table class="table table-bordered table-sm">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Category</th>
+                                            ${Object.keys(Object.values(rows)[0]).map(h => `<th>${h}</th>`).join("")}
+                                         </tr>
+                                    </thead>
+                                    <tbody>`;
+
+            $.each(rows, function (rowName, rowData) {
+                tableHtml += `<tr>
+                        <td><strong>${rowName}</strong></td>
+                        ${$.map(rowData, function (val, key) {
+                    return `<td contenteditable="true" class="editable" data-table="${tableName}" data-row="${rowName}" data-col="${key}">${val}</td>`;
+                }).join("")}</tr>
+                `;
+            });
+
+            tableHtml += `</tbody></table></div>`;
+            $("#table_container").append(tableHtml);
+        });
+
+        // Handle field change (AJAX)
+        $(document).on("change", ".field-input", function () {
+            let payload = {
+                type: "field",
+                field: $(this).data("field"),
+                value: $(this).val()
+            };
+            console.log("Field update:", payload);
+
+
+            // $.ajax({
+            //     url: "/update-field/",
+            //     type: "POST",
+            //     data: JSON.stringify(payload),
+            //     contentType: "application/json",
+            //     headers: { "X-CSRFToken": "{{ csrf_token }}" },
+            //     success: function (res) { console.log("Field saved:", res); }
+            // });
+        });
+
+        // Handle table cell edit (AJAX on blur)
+        $(document).on("blur", ".editable", function () {
+            let payload = {
+                type: "table",
+                table: $(this).data("table"),
+                row: $(this).data("row"),
+                col: $(this).data("col"),
+                value: $(this).text().trim()
+            };
+            console.log("Table cell update:", payload);
+
+            $.ajax({
+                url: "/update-cell/",
+                type: "POST",
+                data: JSON.stringify(payload),
+                contentType: "application/json",
+                headers: { "X-CSRFToken": "{{ csrf_token }}" },
+                success: function (res) { console.log("Cell saved:", res); }
+            });
         });
     });
 
@@ -87,7 +277,7 @@
         url: "{% url 'main:get_ave' %}",   // Django URL
         paramName: "file",                // match your Django view
         maxFiles: 1,
-        maxFilesize: 5,
+        maxFilesize: 250,
         acceptedFiles: "image/*,application/pdf",
         addRemoveLinks: true,
         autoProcessQueue: false,
@@ -147,8 +337,27 @@
         }
     });
 
-    document.getElementById("ConvertBtn").addEventListener("click", function () {
-        myDropzone.processQueue();
+
+    // Initialize Select2 for searchable dropdown
+    $(document).ready(function () {
+        $('#template').select2({
+            placeholder: "-- Choose type --",
+            allowClear: true,
+            width: '100%'
+        });
+
+        // When template changes, clear Dropzone files
+        $('#template').on('change', function () {
+            myDropzone.removeAllFiles(true); // true = cancel uploads if in progress
+            console.log("Template changed → Dropzone cleared");
+        });
+
+        // When template changes, clear Dropzone files
+        $('#ConvertBtn').on('click', function () {
+            myDropzone.processQueue();
+        });
     });
+
+
 </script>
 {% endblock %}

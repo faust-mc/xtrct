@@ -51,7 +51,7 @@
                     render: function (data, type, row) {
                         let detailUrl = "{% url 'main:template_detail' 0 %}".replace("0", row.id);
                         return `
-                            <a href="${detailUrl}" class="btn btn-sm btn-primary">Edit</a>
+                            <a href="${detailUrl}" class="btn btn-sm btn-primary">View</a>
                             <a type="button" id="deactivatebtn" data-id="${row.id}" class="btn btn-sm btn-danger">Deactivate</a>
                         `;
                     }

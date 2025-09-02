@@ -18,13 +18,13 @@ urlpatterns = [
     path("template_config/", template_config, name="template_config"),
 
     path("template_config/<int:pk>", template_config, name="template_config_edit"),
-    
+    path("template_detail/<int:pk>/", template_detail, name="template_detail"),
     
     path('submit_form_ajax/', submit_form_ajax, name='submit_form_ajax'),
+    
     path('edit_form_ajax/<int:pk>', edit_form_ajax, name="edit_form_ajax"),
     path('disable_form_ajax/<int:pk>', disable_form_ajax, name="disable_form_ajax"),
 
-    
     path('get_ave/', get_ave, name='get_ave'),
     path('upload_form/', upload_form, name='upload_form'),
     path("template_detail/<int:pk>/", template_detail, name="template_detail"),

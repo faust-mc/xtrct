@@ -124,6 +124,10 @@ def load_template_list(request):
     return JsonResponse(response)
 
     
+@login_required   
+def template_config(request, pk=None):
+    
+    return render(request, "config.html")
 
 
 
@@ -317,6 +321,18 @@ def disable_form_ajax(request, pk):
         except FormName.DoesNotExist:
             raise Http404("Form not found")
     return JsonResponse({"success": False, "message": "Invalid request method"})
+
+
+@login_required
+def extractor(request):
+    
+    return render(request, 'extractor.html')
+
+
+@login_required
+def submit_form_extractor(request):
+    
+    return render(request, 'extractor.html')
 
 
 
