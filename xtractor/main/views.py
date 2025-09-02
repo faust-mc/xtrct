@@ -1,21 +1,23 @@
-from django.http import JsonResponse, HttpResponseRedirect
+import re
+import os
+import json
+import requests
+import numpy as np
+from django.urls import reverse
+from django.conf import settings
+from django.db import transaction
+from collections import defaultdict
+from django.contrib import messages
+from .services.azure_vision import analyze_image
+from django.contrib.auth.views import LoginView
 from django.views.decorators.csrf import csrf_exempt
-
+from django.contrib.auth.hashers import check_password
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse, HttpResponseRedirect
+from django.contrib.auth import logout, update_session_auth_hash
 from django.shortcuts import render, redirect, get_object_or_404
 from .models import  ComponentType, FormObject, HeaderObjects, RowObjects, FieldObject, FormName
 from .forms import TypeForm, FormObjectForm, HeaderObjectsForm, RowObjectsForm, FieldObjectForm, ChangePasswordForm
-import json
-from collections import defaultdict
-import re
-import numpy as np
-from django.db import transaction
-from django.contrib import messages
-from django.contrib.auth import logout, update_session_auth_hash
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.hashers import check_password
-from django.contrib.auth.views import LoginView
-from django.urls import reverse
-
 
 
 class CustomLoginView(LoginView):
@@ -122,21 +124,6 @@ def load_template_list(request):
     return JsonResponse(response)
 
     
-@login_required   
-def template_config(request, pk=None):
-    
-    return render(request, "config.html")
-
-
-
-@login_required
-def extractor(request):
-    
-    return render(request, 'extractor.html')
-
-def get_values(counter, key, value):
-
-    return 
 
 
 
@@ -202,7 +189,7 @@ def submit_form_ajax(request):
                 t1 = FormObject(form_name=form_name, type=component_table, title=v['table_title'])
                 t1.save()
 
-                if v['label_header'].strip() != '':
+                if v['label_header'].strip() != 'N/A':
                     header_label = HeaderObjects(form_object=t1, header_name=v['label_header'], header_type='label')
                     header_label.save()
 
@@ -357,13 +344,6 @@ def template_detail(request, pk):
 def compute_ocr_reliability(ocr_json, low_conf_threshold=0.5):
     """
     Compute a reliability score for Azure OCR-style JSON with explainability breakdown.
-    
-    Args:
-        ocr_json (dict): Azure OCR JSON response.
-        low_conf_threshold (float): Confidence threshold to consider a word low quality.
-    
-    Returns:
-        dict with scoring details and breakdown.
     """
     width = ocr_json.get("metadata", {}).get("width", 1)
     height = ocr_json.get("metadata", {}).get("height", 1)
@@ -421,15 +401,31 @@ def compute_ocr_reliability(ocr_json, low_conf_threshold=0.5):
     }
 
 
-# Example view
+@csrf_exempt  # remove if you’re handling CSRF properly
 def get_ave(request):
-    with open("main/samp3json.json") as f:
-        ocr_json = json.load(f)
+    """
+    Handles uploaded image file and returns OCR reliability score with breakdown.
+    Accepts multipart form-data with 'file' field.
+    """
+    image_file = request.FILES.get("file")
+    if not image_file:
+        return JsonResponse({"error": "Missing uploaded image file"}, status=400)
 
+    # Call Azure OCR
+    ocr_json = analyze_image(image_file)
+
+    # If Azure OCR returned an error
+    if "error" in ocr_json:
+        return JsonResponse({"error": ocr_json["error"]}, status=500)
+
+    # Compute reliability score
     result = compute_ocr_reliability(ocr_json)
+    print(result)
     return JsonResponse(result, json_dumps_params={"indent": 2})
 
 
+def upload_form(request):
+    return render(request, 'ocr_upload.html')
 
 
 
@@ -441,10 +437,21 @@ def get_ave(request):
 
 
 
+@login_required   
+def template_config(request, pk=None):
+    
+    return render(request, "config.html")
 
 
 
+@login_required
+def extractor(request):
+    
+    return render(request, 'extractor.html')
 
+def get_values(counter, key, value):
+
+    return 
 
 
 
@@ -521,19 +528,48 @@ def sample(request):
    
 
 
+def is_same_column(header_bbox, cell_bbox):
+    header_xs = [p["x"] for p in header_bbox]
+    cell_xs = [p["x"] for p in cell_bbox]
+
+    header_left = min(header_xs)
+    header_right = max(header_xs)
+
+    cell_left = min(cell_xs)
+    cell_right = max(cell_xs)
+
+    # Overlap condition (any horizontal overlap)
+    overlaps = not (cell_right < header_left or cell_left > header_right)
+
+    # Fully contained condition (cell box entirely inside header box)
+    fully_within = (cell_left >= header_left and cell_right <= header_right)
+
+    # Return True if either overlaps or fully contained
+    return overlaps or fully_within
+
+
+
+def get_center(bbox):
+    xs = [p["x"] for p in bbox]
+    ys = [p["y"] for p in bbox]
+    return (sum(xs) / 4, sum(ys) / 4)
+
+
+
 
 
 
 @csrf_exempt
 @login_required
 def ocr_result_view(request):
-    form_name = FormName.objects.get(name="Samp")
+    form_name = FormName.objects.get(name="EGG QUANTITY RECEIVED FORM")
+
     # EGG QUANTITY RECEIVED FORM
     # Samp
     # Form Name
-    print(form_name)
-    # with open("main/samp3json.json") as f:
-    with open("main/samp6.json") as f:
+    
+    with open("main/samp3json.json") as f:
+    # with open("main/samp6.json") as f:
         ocr_data = json.load(f)
     lines = [] #line of texts extracted
     for block in ocr_data["readResult"]["blocks"]:
@@ -549,7 +585,7 @@ def ocr_result_view(request):
     
     fields_to_find = list(
         FormObject.objects
-        .filter(form_name=form_name, type=2)
+        .filter(form_name=form_name, form_type__form_type="Field")
         .values_list('title', flat=True)  # change 'title' to the correct field name
     )
 
@@ -576,11 +612,10 @@ def ocr_result_view(request):
     tables = []
     table_name = list(
         FormObject.objects
-        .filter(form_name=form_name, type=1)
+        .filter(form_name=form_name, form_type__form_type="Table")
         .values_list('title', flat=True)  # change 'title' to the correct field name
     )
-    print(table_name)
-    print()
+  
     # table_name = ["05-01-25"]
     # table_name = ["04- 30 -25"]
     
