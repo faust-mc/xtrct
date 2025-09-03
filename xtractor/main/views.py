@@ -19,6 +19,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from .models import  ComponentType, FormObject, HeaderObjects, RowObjects, FieldObject, FormName
 from .forms import TypeForm, FormObjectForm, HeaderObjectsForm, RowObjectsForm, FieldObjectForm, ChangePasswordForm
 
+import pprint
 
 class CustomLoginView(LoginView):
     template_name = "login.html"
@@ -193,7 +194,7 @@ def submit_form_ajax(request):
                 t1 = FormObject(form_name=form_name, type=component_table, title=v['table_title'])
                 t1.save()
 
-                if v['label_header'].strip() != 'N/A':
+                if v['label_header'].strip() != '':
                     header_label = HeaderObjects(form_object=t1, header_name=v['label_header'], header_type='label')
                     header_label.save()
 
@@ -325,8 +326,10 @@ def disable_form_ajax(request, pk):
 
 @login_required
 def extractor(request):
-    
-    return render(request, 'extractor.html')
+    forms = FormName.objects.filter(status=1)
+    print(forms)
+    print("---sd")
+    return render(request, 'extractor.html', {"forms": forms})
 
 
 @login_required
@@ -351,7 +354,9 @@ def template_detail(request, pk):
         "form": form,
         "form_objects": form.formobject_set.all()
     }
-    print(context)
+    for x in context['form_objects']:
+        print(x)
+    
     return render(request, "components.html", context)
 
 
@@ -460,10 +465,7 @@ def template_config(request, pk=None):
 
 
 
-@login_required
-def extractor(request):
-    
-    return render(request, 'extractor.html')
+
 
 def get_values(counter, key, value):
 
@@ -578,15 +580,21 @@ def get_center(bbox):
 @csrf_exempt
 @login_required
 def ocr_result_view(request):
-    form_name = FormName.objects.get(name="EGG QUANTITY RECEIVED FORM")
+    if request.method != "POST" or "file" not in request.FILES:
+        return JsonResponse({"error": "No file uploaded"}, status=400)
 
-    # EGG QUANTITY RECEIVED FORM
-    # Samp
-    # Form Name
+    file = request.FILES["file"]
+    template_id = request.POST.get("template_id")
+    if not template_id:
+        return JsonResponse({"error": "No template selected"}, status=400)
+
+    ocr_data = analyze_image(file)  # call_azure_ocr reads the file bytes
     
-    with open("main/samp3json.json") as f:
-    # with open("main/samp6.json") as f:
-        ocr_data = json.load(f)
+    if "error" in ocr_data:
+        return JsonResponse({"error": ocr_data["error"]}, status=400)
+
+    form_name = FormName.objects.get(pk=template_id)
+
     lines = [] #line of texts extracted
     for block in ocr_data["readResult"]["blocks"]:
         for line in block["lines"]:
@@ -601,8 +609,8 @@ def ocr_result_view(request):
     
     fields_to_find = list(
         FormObject.objects
-        .filter(form_name=form_name, form_type__form_type="Field")
-        .values_list('title', flat=True)  # change 'title' to the correct field name
+        .filter(form_name=form_name, type__type="Field")  # ✅ follow FK -> field
+        .values_list('title', flat=True)
     )
 
     extra_totals = {}
@@ -628,7 +636,7 @@ def ocr_result_view(request):
     tables = []
     table_name = list(
         FormObject.objects
-        .filter(form_name=form_name, form_type__form_type="Table")
+        .filter(form_name=form_name, type__type="Table")
         .values_list('title', flat=True)  # change 'title' to the correct field name
     )
   
@@ -734,7 +742,7 @@ def ocr_result_view(request):
                     for col in header_names:
                         col_x = header_x_positions.get(col)
                         if col_x is None:
-                            print("n/a")
+                            
                             field_values[col] = "N/A"
                             continue
 
@@ -758,8 +766,13 @@ def ocr_result_view(request):
 
                     reject_table[field] = field_values
                     break
-                print(reject_table)
+                
         tables.append({t:reject_table})
+        d = {
+            "extracted_table": tables,
+            "extracted_fields": extra_totals
+        }
+        print(d)
     return JsonResponse({
         "extracted_table": tables,
         "extracted_fields": extra_totals
@@ -767,6 +780,10 @@ def ocr_result_view(request):
 
 
 
+def save_form(request):
+    data = json.loads(request.body)
+    print("Received JSON:", data)
+   
 
 
 @csrf_exempt
