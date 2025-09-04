@@ -1,25 +1,30 @@
 import re
 import os
-import json
+import json, tempfile, os
+import pprint
 import requests
 import numpy as np
+from collections import defaultdict
+from openpyxl import Workbook
+from openpyxl.utils import get_column_letter
+from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+
 from django.urls import reverse
 from django.conf import settings
 from django.db import transaction
-from collections import defaultdict
-from django.contrib import messages
-from .services.azure_vision import analyze_image
-from django.contrib.auth.views import LoginView
 from django.views.decorators.csrf import csrf_exempt
+from django.contrib import messages
+from django.contrib.auth.views import LoginView
 from django.contrib.auth.hashers import check_password
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse, HttpResponseRedirect
 from django.contrib.auth import logout, update_session_auth_hash
+from django.http import JsonResponse, HttpResponseRedirect, HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
+from .services.azure_vision import analyze_image
 from .models import  ComponentType, FormObject, HeaderObjects, RowObjects, FieldObject, FormName
 from .forms import TypeForm, FormObjectForm, HeaderObjectsForm, RowObjectsForm, FieldObjectForm, ChangePasswordForm
 
-import pprint
+
 
 class CustomLoginView(LoginView):
     template_name = "login.html"
@@ -780,10 +785,112 @@ def ocr_result_view(request):
 
 
 
+
+
 def save_form(request):
-    data = json.loads(request.body)
-    print("Received JSON:", data)
-   
+    if request.method == "POST":
+        data = json.loads(request.body.decode("utf-8"))
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Extracted Data"
+
+        # --- Define styles ---
+        header_fill = PatternFill(start_color="FFD966", end_color="FFD966", fill_type="solid")
+        title_fill = PatternFill(start_color="F4B084", end_color="F4B084", fill_type="solid")
+        bold_font = Font(bold=True)
+        title_font = Font(bold=True, size=14, color="FFFFFF")
+        center_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        thin_border = Border(
+            left=Side(style="thin"),
+            right=Side(style="thin"),
+            top=Side(style="thin"),
+            bottom=Side(style="thin"),
+        )
+
+        # --- Extracted Fields (if present) ---
+        if data.get("extracted_fields"):
+            ws.append(["Field", "Value"])
+            for col in range(1, 3):
+                cell = ws.cell(row=1, column=col)
+                cell.font = bold_font
+                cell.fill = header_fill
+                cell.alignment = center_align
+                cell.border = thin_border
+
+            for field, value in data["extracted_fields"].items():
+                ws.append([field, value])
+                for col in range(1, 3):
+                    cell = ws.cell(row=ws.max_row, column=col)
+                    cell.alignment = center_align
+                    cell.border = thin_border
+
+            ws.append([])  # blank row after fields
+
+        # --- Extracted Tables (dynamic) ---
+        for table in data.get("extracted_table", []):
+            for table_name, rows in table.items():
+                if not rows:
+                    continue
+
+                # Add merged table title
+                ws.append([])
+                start_row = ws.max_row + 1
+                num_cols = len(list(rows.values())[0]) + 1  # size col + data cols
+                ws.merge_cells(start_row=start_row, start_column=1, end_row=start_row, end_column=num_cols)
+                title_cell = ws.cell(row=start_row, column=1, value=table_name)
+                title_cell.font = title_font
+                title_cell.alignment = center_align
+                title_cell.fill = title_fill
+                title_cell.border = thin_border
+
+                # Add table headers dynamically
+                headers = ["SIZE"] + list(list(rows.values())[0].keys())
+                ws.append(headers)
+                for col in range(1, len(headers) + 1):
+                    cell = ws.cell(row=ws.max_row, column=col)
+                    cell.font = bold_font
+                    cell.fill = header_fill
+                    cell.alignment = center_align
+                    cell.border = thin_border
+
+                # Add table rows dynamically
+                for row_name, row_data in rows.items():
+                    row_values = [row_name] + [row_data.get(h, "") for h in headers[1:]]
+                    ws.append(row_values)
+                    for col in range(1, len(headers) + 1):
+                        cell = ws.cell(row=ws.max_row, column=col)
+                        cell.alignment = center_align
+                        cell.border = thin_border
+
+        # --- Auto column widths ---
+        for col in ws.columns:
+            max_length = max(len(str(cell.value)) if cell.value else 0 for cell in col)
+            ws.column_dimensions[col[0].column_letter].width = max_length + 2
+
+        # Save temp file
+        tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+        wb.save(tmp_file.name)
+
+        download_url = f"/download_excel/{os.path.basename(tmp_file.name)}"
+        return JsonResponse({"success": True, "download_url": download_url})
+
+    return JsonResponse({"success": False, "error": "Invalid request"}, status=400)
+
+
+def download_excel(request, filename):
+    filepath = os.path.join(tempfile.gettempdir(), filename)
+    if not os.path.exists(filepath):
+        return HttpResponse("File not found.", status=404)
+
+    with open(filepath, "rb") as f:
+        response = HttpResponse(
+            f.read(),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
 
 
 @csrf_exempt
