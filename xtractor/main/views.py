@@ -203,6 +203,9 @@ def submit_form_ajax(request):
                     header_label = HeaderObjects(form_object=t1, header_name=v['label_header'], header_type='label')
                     header_label.save()
 
+                else:
+                    header_label = HeaderObjects(form_object=t1, header_name="NA", header_type='label')
+                    header_label.save()
 
                 for l in v['labels']:
                     row=RowObjects(form_object=t1, row_name=l)
@@ -294,6 +297,9 @@ def edit_form_ajax(request, pk):
 
                 if v['label_header'].strip() != '':
                     header_label = HeaderObjects(form_object=t1, header_name=v['label_header'], header_type='label')
+                    header_label.save()
+                else:
+                    header_label = HeaderObjects(form_object=t1, header_name="NA", header_type='label')
                     header_label.save()
 
                 for l in v['labels']:
