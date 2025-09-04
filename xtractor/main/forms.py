@@ -4,12 +4,12 @@ from .models import ComponentType, FormObject, HeaderObjects, RowObjects, FieldO
 class TypeForm(forms.ModelForm):
     class Meta:
         model = ComponentType
-        fields = ['form_type']
+        fields = ['type']
 
 class FormObjectForm(forms.ModelForm):
     class Meta:
         model = FormObject
-        fields = ['form_type','title']
+        fields = ['type','title']
         
 class HeaderObjectsForm(forms.ModelForm):
     class Meta:

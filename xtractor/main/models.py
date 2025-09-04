@@ -40,7 +40,7 @@ class FormName(models.Model):
 
 
 class ComponentType(models.Model):
-    form_type = models.CharField(max_length=20, null=True, blank=True)
+    type = models.CharField(max_length=20, null=True, blank=True)
 
     def __str__(self):
         return self.type
@@ -49,7 +49,7 @@ class ComponentType(models.Model):
 
 class FormObject(models.Model):
     form_name = models.ForeignKey(FormName, on_delete=models.CASCADE, null=True, blank=True)
-    form_type = models.ForeignKey(ComponentType, null=True, blank=True,on_delete=models.CASCADE, related_name="f_type")
+    type = models.ForeignKey(ComponentType, on_delete=models.CASCADE, null=True, blank=True)
     title = models.CharField(max_length=40, null=True, blank=True)
 
     def __str__(self):

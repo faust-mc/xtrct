@@ -45,12 +45,12 @@
         <div class="mb-3">
             <div class="form-floating">
                 <select class="form-select" id="template" name="template">
+
                     <option value="" selected>-- Choose type --</option>
-                    <option value="Template 1">Template 1</option>
-                    <option value="Template 2">Template 2</option>
-                    <option value="Template 3">Template 3</option>
-                    <option value="Template 4">Template 4</option>
-                    <option value="Template 5">Template 5</option>
+                    {% for f in forms %}
+                    <option value="{{f.pk}}">{{f.name}}</option>
+                    {% endfor %}
+                    
                 </select>
                 <label for="template">Select Template</label>
             </div>
@@ -98,7 +98,7 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="button" class="btn btn-primary">Proceed</button>
+                        <button type="button" id="save_extracted" class="btn btn-primary">Save</button>
                     </div>
                 </div>
             </div>
@@ -113,77 +113,7 @@
 {% block scripts %}
 
 <script>
-    var sample_data = {
-        "extracted_table": [
-            {
-                "COLLECTED GOOD EGGS": {
-                    "SUPER JUMBO": {
-                        "QUANTITY": "N/A",
-                        "TOTAL": "137"
-                    },
-                    "JUMBO": {
-                        "QUANTITY": "2cs - 4Ty - 5",
-                        "TOTAL": "845"
-                    },
-                    "EXTRA LARGE": {
-                        "QUANTITY": "Gcs - 4Ty - 21",
-                        "TOTAL": "2.30"
-                    },
-                    "LARGE": {
-                        "QUANTITY": "4cs - 7Ty",
-                        "TOTAL": "2.010"
-                    },
-                    "MEDIUM": {
-                        "QUANTITY": "CS - 12'",
-                        "TOTAL": "462"
-                    },
-                    "SMALL": {
-                        "QUANTITY": "N/A",
-                        "TOTAL": "125"
-                    },
-                    "EXTRA SMALL": {
-                        "QUANTITY": "N/A",
-                        "TOTAL": "19"
-                    },
-                    "PEWEE": {
-                        "QUANTITY": "N/A",
-                        "TOTAL": "2"
-                    }
-                }
-            },
-            {
-                "COLLECTED REJECT EGGS": {
-                    "SLIGHTLY DIRTY": {
-                        "ACCUMULATOR": "78",
-                        "CANDLING": "N/A",
-                        "TAKE AWAY": "N/A",
-                        "BYPASS": "N/A",
-                        "TOTAL": "78"
-                    },
-                    "DIRTY YOLK": {
-                        "ACCUMULATOR": "33",
-                        "CANDLING": "8",
-                        "TAKE AWAY": "N/A",
-                        "BYPASS": ".",
-                        "TOTAL": "44"
-                    },
-                    "DIRTY BLOOD": {
-                        "ACCUMULATOR": "13",
-                        "CANDLING": "N/A",
-                        "TAKE AWAY": "N/A",
-                        "BYPASS": "N/A",
-                        "TOTAL": "16"
-                    }
-                }
-            }
-        ],
-        "extracted_fields": {
-            "START:": "7:28 am",
-            "END:": "9:05 am",
-            "ACTUAL COUNT:": "6.820"
-        }
-    }
-
+   
     $(document).ready(function () {
         // Render extracted fields
         $.each(sample_data.extracted_fields, function (field, value) {
@@ -291,43 +221,124 @@
             this.on("success", function (file, response) {
                 console.log("Uploaded:", response);
 
-                // Build a nicely formatted HTML view
-                let htmlContent = `
-                <div style="text-align:left;">
-                    <h6>Reliability Score</h6>
-                    <p style="font-size:1.2em;"><strong>${response.score.toFixed(2)}%</strong></p>
-                    <hr>
-                    ${response.breakdown ? `
-                    <h6>Breakdown</h6>
-                    <ul style="padding-left:20px;">
-                        ${Object.entries(response.breakdown).map(([key, val]) => {
-                    // Format decimals nicely
-                    let displayVal = (typeof val === "number" && val < 1) ? (val * 100).toFixed(2) + "%" : val;
+   
+    let htmlContent = `
+        <div style="text-align:left;">
+            <h6>Reliability Score</h6>
+            <p style="font-size:1.2em;"><strong>${response.score.toFixed(2)}%</strong></p>
+            <hr>
+            ${response.breakdown ? `
+            <h6>Breakdown</h6>
+            <ul style="padding-left:20px;">
+                ${Object.entries(response.breakdown).map(([key, val]) => {
+                    let displayVal = (typeof val === "number" && val < 1) ? (val*100).toFixed(2)+"%" : val;
                     return `<li><strong>${key}:</strong> ${displayVal}</li>`;
                 }).join("")}
                     </ul>
                     ` : ""}
                 </div> `;
 
-                // Show SweetAlert with styled content
-                Swal.fire({
-                    title: "OCR Result",
-                    html: htmlContent,
-                    icon: "info",
-                    width: 600,
-                    showCancelButton: true,
-                    confirmButtonText: "Proceed",
-                    cancelButtonText: "Cancel",
-                    customClass: { popup: 'swal-wide' }
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        Swal.fire("Proceeding...", "", "success");
-                        // trigger next action here
-                    } else {
-                        Swal.fire("Cancelled", "You cancelled the operation", "error");
+    Swal.fire({
+        title: "OCR Result",
+        html: htmlContent,
+        icon: "info",
+        width: 600,
+        showCancelButton: true,
+        confirmButtonText: "Proceed",
+        cancelButtonText: "Cancel",
+        customClass: { popup: 'swal-wide' }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            let formData = new FormData();
+            formData.append("file", myDropzone.files[0]);  // the uploaded file
+            formData.append("template_id", $("#template").val());
+            
+            $.ajax({
+                url: "{% url 'main:ocr-result' %}",  
+                type: "POST",
+                data: formData,
+                processData: false,   // prevent jQuery from messing with FormData
+                contentType: false,
+                headers: { "X-CSRFToken": "{{ csrf_token }}" },
+                success: function (res) {
+                   
+                    $("#field_container").empty();
+                    $("#table_container").empty();
+
+                 
+                    if (!res || ( $.isEmptyObject(res.extracted_fields) && (!res.extracted_table || res.extracted_table.length === 0) )) {
+                        $("#field_container").append(`
+                            <div class="alert alert-warning">No data was extracted from the file.</div>
+                        `);
+                        $("#staticPreview").modal("show");
+                        return;
                     }
-                });
+
+          
+                    if (res.extracted_fields && !$.isEmptyObject(res.extracted_fields)) {
+                        $.each(res.extracted_fields, function (field, value) {
+                            $("#field_container").append(`
+                                <div class="mb-1 row align-items-center field-item">
+                                    <label class="col-auto col-form-label">${field}</label>
+                                    <div class="col">
+                                        <input type="text" 
+                                               class="form-control form-control-sm field-input" 
+                                               name="fields[${field}]" 
+                                               value="${value || ""}" 
+                                               data-field="${field}">
+                                    </div>
+                                </div>
+                            `);
+                        });
+                    }
+
+                    
+                    if (res.extracted_table && res.extracted_table.length > 0) {
+                        $.each(res.extracted_table, function (i, tableObj) {
+                            let tableName = Object.keys(tableObj)[0];
+                            let rows = tableObj[tableName];
+
+                            if (!rows || $.isEmptyObject(rows)) return; // skip empty tables
+
+                            let firstRow = Object.values(rows)[0];
+                            let headers = firstRow ? Object.keys(firstRow) : [];
+
+                            let tableHtml = `<div class="mb-3"><h5>${tableName}</h5>
+                                                <table class="table table-bordered table-sm">
+                                                    <thead class="table-light">
+                                                        <tr>
+                                                            <th></th>
+                                                            ${headers.map(h => `<th>${h}</th>`).join("")}
+                                                         </tr>
+                                                    </thead>
+                                                    <tbody>`;
+
+                            $.each(rows, function (rowName, rowData) {
+                                tableHtml += `<tr>
+                                    <td><strong>${rowName}</strong></td>
+                                    ${$.map(rowData, function (val, key) {
+                                        return `<td contenteditable="true" class="editable" data-table="${tableName}" data-row="${rowName}" data-col="${key}">${val || ""}</td>`;
+                                    }).join("")}</tr>`;
+                            });
+
+                            tableHtml += `</tbody></table></div>`;
+                            $("#table_container").append(tableHtml);
+                        });
+                    }
+
+                  
+                    $("#staticPreview").modal("show");
+                },
+
+                error: function (xhr, status, error) {
+                    Swal.fire("Error", "Failed to send data to backend", "error");
+                }
             });
+        } else {
+            Swal.fire("Cancelled", "You cancelled the operation", "error");
+        }
+    });
+});
 
 
             this.on("error", function (file, errorMessage) {
@@ -335,6 +346,67 @@
             });
         }
     });
+
+
+ 
+$(document).on("click", "#save_extracted", function () {
+    let result = {
+        extracted_fields: {},
+        extracted_table: []
+    };
+
+   
+    $("#field_container .field-input").each(function () {
+        let fieldName = $(this).data("field");
+        let fieldValue = $(this).val();
+        result.extracted_fields[fieldName] = fieldValue;
+    });
+
+ 
+    $("#table_container > div").each(function () {
+        let tableName = $(this).find("h5").text().trim();
+        let tableObj = {};
+        let rows = {};
+
+        $(this).find("tbody tr").each(function () {
+            let rowName = $(this).find("td:first strong").text().trim();
+            let rowData = {};
+
+            $(this).find("td.editable").each(function () {
+                let colName = $(this).data("col");
+                let val = $(this).text().trim();
+                rowData[colName] = val;
+            });
+
+            rows[rowName] = rowData;
+        });
+
+        tableObj[tableName] = rows;
+        result.extracted_table.push(tableObj);
+    });
+
+    
+    var json_data=JSON.stringify(result);
+  
+    $.ajax({
+        url: "{% url 'main:save_form' %}",
+        type: "POST",
+        data: json_data,
+        contentType: "application/json",
+        headers: { "X-CSRFToken": "{{ csrf_token }}" },
+        success: function (res) {
+            if (res.success && res.download_url) {
+                // ✅ Trigger download
+                window.location.href = res.download_url;
+            } else {
+                Swal.fire("Error", "Could not generate Excel.", "error");
+            }
+        },
+        error: function () {
+            Swal.fire("Error", "Failed to save data.", "error");
+        }
+    });
+});
 
 
     // Initialize Select2 for searchable dropdown

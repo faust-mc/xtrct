@@ -2,7 +2,7 @@ from django.urls import path
 from django.contrib.auth import views as auth_views
 
 
-from .views import (ocr_result_view, quantity_graded_eggs, extract_table_rows_from_file, template_list, load_template_list, template_config, login,index, submit_form_ajax, extractor, sample, logout_request, CustomLoginView, change_password, template_detail, edit_form_ajax, disable_form_ajax, get_ave, upload_form)
+from .views import (ocr_result_view, quantity_graded_eggs, extract_table_rows_from_file, template_list, load_template_list, template_config, login,index, submit_form_ajax, extractor, sample, logout_request, CustomLoginView, change_password, template_detail, edit_form_ajax, disable_form_ajax, get_ave, upload_form, save_form, download_excel)
 
 
 app_name = 'main'
@@ -29,8 +29,9 @@ urlpatterns = [
     path('upload_form/', upload_form, name='upload_form'),
     path("template_detail/<int:pk>/", template_detail, name="template_detail"),
     path("extractor/", extractor, name="extractor"),
-    
-    path("sample1/", ocr_result_view, name="ocr-result"),
+    path('save_form/', save_form, name='save_form'),
+    path("download_excel/<str:filename>", download_excel, name="download_excel"),
+    path("extract_text/", ocr_result_view, name="ocr-result"),
     path("sample2/", quantity_graded_eggs, name="quantity_graded_eggs"),
     #path("sample3/", extract_table_by_headers2, name="quantity_graded_eggs"),
     path("sample3/", extract_table_rows_from_file, name="quantity_graded_eggs"),
