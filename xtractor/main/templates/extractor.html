@@ -390,13 +390,18 @@ $(document).on("click", "#save_extracted", function () {
     var json_data=JSON.stringify(result);
   
     $.ajax({
-        url: "{% url 'main:save_form' %}",   
+        url: "{% url 'main:save_form' %}",
         type: "POST",
         data: json_data,
         contentType: "application/json",
         headers: { "X-CSRFToken": "{{ csrf_token }}" },
         success: function (res) {
-            Swal.fire("Success", "Data saved successfully!", "success");
+            if (res.success && res.download_url) {
+                // ✅ Trigger download
+                window.location.href = res.download_url;
+            } else {
+                Swal.fire("Error", "Could not generate Excel.", "error");
+            }
         },
         error: function () {
             Swal.fire("Error", "Failed to save data.", "error");
