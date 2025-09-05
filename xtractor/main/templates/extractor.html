@@ -254,11 +254,11 @@
 
                                         let tableHtml = `<div class="mb-3"><h5>${tableName}</h5>
                                 <table class="table table-bordered table-sm">
-                                    <thead class="table-light">
+                                    <thead>
                                        <tr>
                                         ${headers.map(h => {
                                             // 👇 If header is NA/N/A/na, show as blank
-                                            return `<th>${["NA", "N/A", "na"].includes(h.trim()) ? "" : h}</th>`;
+                                            return `<th  style="background-color: #FFD966">${["NA", "N/A", "na"].includes(h.trim()) ? "" : h}</th>`;
                                         }).join("")}
                                      </tr>
                                     </thead>
