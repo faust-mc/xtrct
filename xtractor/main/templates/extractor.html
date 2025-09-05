@@ -44,13 +44,12 @@
         <!-- Bootstrap 5 Select with Search -->
         <div class="mb-3">
             <div class="form-floating">
-                <select class="form-select" id="template" name="template">
-
+                <select class="form-select" id="template" name="template" required>
                     <option value="" selected>-- Choose type --</option>
                     {% for f in forms %}
                     <option value="{{f.pk}}">{{f.name}}</option>
                     {% endfor %}
-                    
+
                 </select>
                 <label for="template">Select Template</label>
             </div>
@@ -59,13 +58,8 @@
         <!-- Dropzone Area -->
         <form class="dropzone mb-3" id="myDropzone">
             {% csrf_token %}
-            <div class="dz-message">Drop an image or PDF here, or click to select</div>
+            <div class="dz-message">Drop an image here, or click to select</div>
         </form>
-
-        <!-- Button trigger modal -->
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#staticPreview">
-            Launch static backdrop modal
-        </button>
 
         <!-- Modal -->
         <div class="modal fade" id="staticPreview" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
@@ -113,52 +107,8 @@
 {% block scripts %}
 
 <script>
-   
+
     $(document).ready(function () {
-        // Render extracted fields
-        $.each(sample_data.extracted_fields, function (field, value) {
-            $("#field_container").append(`
-                <div class="mb-1 row align-items-center field-item">
-                    <label class="col-auto col-form-label">${field}</label>
-                    <div class="col">
-                        <input type="text" 
-                               class="form-control form-control-sm field-input" 
-                               name="fields[${field}]" 
-                               value="${value}" 
-                               data-field="${field}">
-                    </div>
-                </div>
-            `);
-        });
-
-        // Render extracted tables
-        $.each(sample_data.extracted_table, function (i, tableObj) {
-            let tableName = Object.keys(tableObj)[0];
-            let rows = tableObj[tableName];
-
-            let tableHtml = `<div class="mb-3"><h5>${tableName}</h5>
-                                <table class="table table-bordered table-sm">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>Category</th>
-                                            ${Object.keys(Object.values(rows)[0]).map(h => `<th>${h}</th>`).join("")}
-                                         </tr>
-                                    </thead>
-                                    <tbody>`;
-
-            $.each(rows, function (rowName, rowData) {
-                tableHtml += `<tr>
-                        <td><strong>${rowName}</strong></td>
-                        ${$.map(rowData, function (val, key) {
-                    return `<td contenteditable="true" class="editable" data-table="${tableName}" data-row="${rowName}" data-col="${key}">${val}</td>`;
-                }).join("")}</tr>
-                `;
-            });
-
-            tableHtml += `</tbody></table></div>`;
-            $("#table_container").append(tableHtml);
-        });
-
         // Handle field change (AJAX)
         $(document).on("change", ".field-input", function () {
             let payload = {
@@ -166,7 +116,7 @@
                 field: $(this).data("field"),
                 value: $(this).val()
             };
-            
+
 
 
             // $.ajax({
@@ -188,7 +138,7 @@
                 col: $(this).data("col"),
                 value: $(this).text().trim()
             };
-            
+
 
             $.ajax({
                 url: "/update-cell/",
@@ -221,8 +171,8 @@
             this.on("success", function (file, response) {
                 console.log("Uploaded:", response);
 
-   
-    let htmlContent = `
+
+                let htmlContent = `
         <div style="text-align:left;">
             <h6>Reliability Score</h6>
             <p style="font-size:1.2em;"><strong>${response.score.toFixed(2)}%</strong></p>
@@ -231,52 +181,52 @@
             <h6>Breakdown</h6>
             <ul style="padding-left:20px;">
                 ${Object.entries(response.breakdown).map(([key, val]) => {
-                    let displayVal = (typeof val === "number" && val < 1) ? (val*100).toFixed(2)+"%" : val;
+                    let displayVal = (typeof val === "number" && val < 1) ? (val * 100).toFixed(2) + "%" : val;
                     return `<li><strong>${key}:</strong> ${displayVal}</li>`;
                 }).join("")}
                     </ul>
                     ` : ""}
                 </div> `;
 
-    Swal.fire({
-        title: "OCR Result",
-        html: htmlContent,
-        icon: "info",
-        width: 600,
-        showCancelButton: true,
-        confirmButtonText: "Proceed",
-        cancelButtonText: "Cancel",
-        customClass: { popup: 'swal-wide' }
-    }).then((result) => {
-        if (result.isConfirmed) {
-            let formData = new FormData();
-            formData.append("file", myDropzone.files[0]);  // the uploaded file
-            formData.append("template_id", $("#template").val());
-            
-            $.ajax({
-                url: "{% url 'main:ocr-result' %}",  
-                type: "POST",
-                data: formData,
-                processData: false,   // prevent jQuery from messing with FormData
-                contentType: false,
-                headers: { "X-CSRFToken": "{{ csrf_token }}" },
-                success: function (res) {
-    
-    $("#field_container").empty();
-    $("#table_container").empty();
+                Swal.fire({
+                    title: "OCR Result",
+                    html: htmlContent,
+                    icon: "info",
+                    width: 600,
+                    showCancelButton: true,
+                    confirmButtonText: "Proceed",
+                    cancelButtonText: "Cancel",
+                    customClass: { popup: 'swal-wide' }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        let formData = new FormData();
+                        formData.append("file", myDropzone.files[0]);  // the uploaded file
+                        formData.append("template_id", $("#template").val());
 
-    if (!res || ($.isEmptyObject(res.extracted_fields) && (!res.extracted_table || res.extracted_table.length === 0))) {
-        $("#field_container").append(`
+                        $.ajax({
+                            url: "{% url 'main:ocr-result' %}",
+                            type: "POST",
+                            data: formData,
+                            processData: false,   // prevent jQuery from messing with FormData
+                            contentType: false,
+                            headers: { "X-CSRFToken": "{{ csrf_token }}" },
+                            success: function (res) {
+
+                                $("#field_container").empty();
+                                $("#table_container").empty();
+
+                                if (!res || ($.isEmptyObject(res.extracted_fields) && (!res.extracted_table || res.extracted_table.length === 0))) {
+                                    $("#field_container").append(`
             <div class="alert alert-warning">No data was extracted from the file.</div>
         `);
-        $("#staticPreview").modal("show");
-        return;
-    }
+                                    $("#staticPreview").modal("show");
+                                    return;
+                                }
 
-    // ==== Fields ====
-    if (res.extracted_fields && !$.isEmptyObject(res.extracted_fields)) {
-        $.each(res.extracted_fields, function (field, value) {
-            $("#field_container").append(`
+                                // ==== Fields ====
+                                if (res.extracted_fields && !$.isEmptyObject(res.extracted_fields)) {
+                                    $.each(res.extracted_fields, function (field, value) {
+                                        $("#field_container").append(`
                 <div class="mb-1 row align-items-center field-item">
                     <label class="col-auto col-form-label">${field}</label>
                     <div class="col">
@@ -288,62 +238,62 @@
                     </div>
                 </div>
             `);
-        });
-    }
+                                    });
+                                }
 
-    // ==== Tables ====
-    if (res.extracted_table && res.extracted_table.length > 0) {
-        $.each(res.extracted_table, function (i, tableObj) {
-            let tableName = Object.keys(tableObj)[0];
-            let rows = tableObj[tableName]; // array of row objects
+                                // ==== Tables ====
+                                if (res.extracted_table && res.extracted_table.length > 0) {
+                                    $.each(res.extracted_table, function (i, tableObj) {
+                                        let tableName = Object.keys(tableObj)[0];
+                                        let rows = tableObj[tableName]; // array of row objects
 
-            if (!rows || rows.length === 0) return;
+                                        if (!rows || rows.length === 0) return;
 
-            // Take headers dynamically from first row
-            let headers = Object.keys(rows[0]);
+                                        // Take headers dynamically from first row
+                                        let headers = Object.keys(rows[0]);
 
-            let tableHtml = `<div class="mb-3"><h5>${tableName}</h5>
+                                        let tableHtml = `<div class="mb-3"><h5>${tableName}</h5>
                                 <table class="table table-bordered table-sm">
                                     <thead class="table-light">
                                        <tr>
                                         ${headers.map(h => {
                                             // 👇 If header is NA/N/A/na, show as blank
-                                            return `<th>${["NA","N/A","na"].includes(h.trim()) ? "" : h}</th>`;
+                                            return `<th>${["NA", "N/A", "na"].includes(h.trim()) ? "" : h}</th>`;
                                         }).join("")}
                                      </tr>
                                     </thead>
                                     <tbody>`;
 
-            $.each(rows, function (j, rowData) {
-                tableHtml += `<tr>`;
-                $.each(headers, function (k, header) {
-                    let val = rowData[header] || "";
-                    tableHtml += `<td contenteditable="true" class="editable" 
+                                        $.each(rows, function (j, rowData) {
+                                            tableHtml += `<tr>`;
+                                            $.each(headers, function (k, header) {
+                                                let val = rowData[header] || "";
+                                                tableHtml += `<td contenteditable="true" class="editable" 
                                      data-table="${tableName}" 
                                      data-row="${j}" 
                                      data-col="${header}">${val}</td>`;
+                                            });
+                                            tableHtml += `</tr>`;
+                                        });
+
+                                        tableHtml += `</tbody></table></div>`;
+                                        $("#table_container").append(tableHtml);
+                                    });
+                                }
+
+                                $("#staticPreview").modal("show");
+                            },
+
+
+                            error: function (xhr, status, error) {
+                                Swal.fire("Error", "Failed to send data to backend", "error");
+                            }
+                        });
+                    } else {
+                        Swal.fire("Cancelled", "You cancelled the operation", "error");
+                    }
                 });
-                tableHtml += `</tr>`;
             });
-
-            tableHtml += `</tbody></table></div>`;
-            $("#table_container").append(tableHtml);
-        });
-    }
-
-    $("#staticPreview").modal("show");
-},
-
-
-                error: function (xhr, status, error) {
-                    Swal.fire("Error", "Failed to send data to backend", "error");
-                }
-            });
-        } else {
-            Swal.fire("Cancelled", "You cancelled the operation", "error");
-        }
-    });
-});
 
 
             this.on("error", function (file, errorMessage) {
@@ -353,60 +303,64 @@
     });
 
 
- 
-$(document).on("click", "#save_extracted", function () {
-    let result = {
-        extracted_fields: {},
-        extracted_table: []
-    };
 
-    // Fields
-    $("#field_container .field-input").each(function () {
-        let fieldName = $(this).data("field");
-        let fieldValue = $(this).val();
-        result.extracted_fields[fieldName] = fieldValue;
-    });
+    $(document).on("click", "#save_extracted", function () {
+        let result = {
+            extracted_fields: {},
+            extracted_table: []
+        };
 
-    // Tables
-    $("#table_container > div").each(function () {
-        let tableName = $(this).find("h5").text().trim();
-        let tableObj = {};
-        let rows = [];
-
-        $(this).find("tbody tr").each(function () {
-            let rowData = {};
-            $(this).find("td.editable").each(function () {
-                let colName = $(this).data("col");
-                let val = $(this).text().trim();
-                rowData[colName] = val;
-            });
-            rows.push(rowData);
+        // Fields
+        $("#field_container .field-input").each(function () {
+            let fieldName = $(this).data("field");
+            let fieldValue = $(this).val();
+            result.extracted_fields[fieldName] = fieldValue;
         });
 
-        tableObj[tableName] = rows;
-        result.extracted_table.push(tableObj);
-    });
+        // Tables
+        $("#table_container > div").each(function () {
+            let tableName = $(this).find("h5").text().trim();
+            let tableObj = {};
+            let rows = [];
 
-    var json_data = JSON.stringify(result);
+            $(this).find("tbody tr").each(function () {
+                let rowData = {};
+                $(this).find("td.editable").each(function () {
+                    let colName = $(this).data("col");
+                    let val = $(this).text().trim();
+                    rowData[colName] = val;
+                });
+                rows.push(rowData);
+            });
 
-    $.ajax({
-        url: "{% url 'main:save_form' %}",
-        type: "POST",
-        data: json_data,
-        contentType: "application/json",
-        headers: { "X-CSRFToken": "{{ csrf_token }}" },
-        success: function (res) {
-            if (res.success && res.download_url) {
-                window.location.href = res.download_url;
-            } else {
-                Swal.fire("Error", "Could not generate Excel.", "error");
+            tableObj[tableName] = rows;
+            result.extracted_table.push(tableObj);
+        });
+
+        var json_data = JSON.stringify(result);
+
+        $.ajax({
+            url: "{% url 'main:save_form' %}",
+            type: "POST",
+            data: json_data,
+            contentType: "application/json",
+            headers: { "X-CSRFToken": "{{ csrf_token }}" },
+            success: function (res) {
+                if (res.success && res.download_url) {
+                    window.location.href = res.download_url;
+
+                    Swal.fire("success", "Your Excel file has been generated and downloaded.", "success");
+
+                    $('#staticPreview').modal('hide');
+                } else {
+                    Swal.fire("Error", "Could not generate Excel.", "error");
+                }
+            },
+            error: function () {
+                Swal.fire("Error", "Failed to save data.", "error");
             }
-        },
-        error: function () {
-            Swal.fire("Error", "Failed to save data.", "error");
-        }
+        });
     });
-});
 
 
     // Initialize Select2 for searchable dropdown
@@ -425,6 +379,31 @@ $(document).on("click", "#save_extracted", function () {
 
         // When template changes, clear Dropzone files
         $('#ConvertBtn').on('click', function () {
+
+            const templateVal = $('#template').val();
+
+            // Check if template is selected
+            if (!templateVal) {
+                Swal.fire({
+                    title: "Template Required",
+                    text: "Please select a template before converting.",
+                    icon: "warning",
+                    confirmButtonText: "OK"
+                });
+                return;
+            }
+
+            // Check if at least one file is added
+            if (myDropzone.files.length === 0) {
+                Swal.fire({
+                    title: "File Required",
+                    text: "Please upload at least one image before converting.",
+                    icon: "warning",
+                    confirmButtonText: "OK"
+                });
+                return;
+            }
+
             myDropzone.processQueue();
         });
     });
