@@ -237,7 +237,7 @@ def edit_form_ajax(request, pk):
 
         with transaction.atomic():
             form_fields = request.POST.getlist('field_list[]')
-            print(form_fields)
+          
             
             form_data = dict(request.POST)
 
@@ -338,8 +338,7 @@ def disable_form_ajax(request, pk):
 @login_required
 def extractor(request):
     forms = FormName.objects.filter(status=1)
-    print(forms)
-    print("---sd")
+   
     return render(request, 'extractor.html', {"forms": forms})
 
 
@@ -365,8 +364,7 @@ def template_detail(request, pk):
         "form": form,
         "form_objects": form.formobject_set.all()
     }
-    for x in context['form_objects']:
-        print(x)
+    
     
     return render(request, "components.html", context)
 
@@ -452,7 +450,7 @@ def get_ave(request):
 
     # Compute reliability score
     result = compute_ocr_reliability(ocr_json)
-    print(result)
+    
     return JsonResponse(result, json_dumps_params={"indent": 2})
 
 
@@ -673,6 +671,12 @@ def ocr_result_view(request):
                 break
 
         #header_names = ["QUANTITY", "TOTAL"]
+        label_header = (
+            HeaderObjects.objects
+            .filter(form_object=table, header_type="label")
+            .values_list("header_name", flat=True)
+            .first()
+        ) or "LABEL"
 
         header_names = list(
             HeaderObjects.objects
@@ -732,58 +736,47 @@ def ocr_result_view(request):
             .values_list('row_name', flat=True)
         )
 
-        reject_table = {}
+        reject_table = []
 
         for field in row_names:
             for line in lines:
                 if (
                     field == line["text"]
-                    and line["center"][0] < reject_anchor_x  # within 100px horizontally of table name
-                    and line["center"][1] > reject_anchor_y  # ensure it's below the title
+                    and line["center"][0] < reject_anchor_x
+                    and line["center"][1] > reject_anchor_y
                 ):
-
                     field_y = line["center"][1]
                     label_x = line["center"][0]
                     same_row = [l for l in lines if abs(l["center"][1] - field_y) < 15.6 and l["center"][0] > label_x + 5]
 
-                
-                    # print(same_row)
                     field_values = {}
-
                     for col in header_names:
                         col_x = header_x_positions.get(col)
                         if col_x is None:
-                            
                             field_values[col] = "N/A"
                             continue
-
-                        # Get the bbox for this header
-                        # Get the bbox from the closest matching header (already filtered correctly)
                         header_info = closest_headers.get(col)
                         if not header_info:
                             field_values[col] = "N/A"
                             continue
-
                         header_bbox = header_info["line"]["bbox"]
-
-                        
-                        # Find matches within same row that horizontally overlap with the header bbox
                         matches = [l for l in same_row if is_same_column(header_bbox, l["bbox"])]
-                        # print(matches)
-                        # Choose the one closest in X to the expected header position
                         closest = min(matches, key=lambda l: abs(l["center"][0] - col_x), default=None)
-
                         field_values[col] = closest["text"] if closest else "N/A"
 
-                    reject_table[field] = field_values
+                    # ✅ Add SIZE into row object
+                    row_object = {label_header: field}
+                    row_object.update(field_values)
+                    reject_table.append(row_object)
                     break
+
                 
         tables.append({t:reject_table})
         d = {
             "extracted_table": tables,
             "extracted_fields": extra_totals
         }
-        print(d)
+        
     return JsonResponse({
         "extracted_table": tables,
         "extracted_fields": extra_totals
@@ -796,7 +789,7 @@ def ocr_result_view(request):
 def save_form(request):
     if request.method == "POST":
         data = json.loads(request.body.decode("utf-8"))
-
+        
         wb = Workbook()
         ws = wb.active
         ws.title = "Extracted Data"
@@ -814,7 +807,7 @@ def save_form(request):
             bottom=Side(style="thin"),
         )
 
-        # --- Extracted Fields (if present) ---
+        # --- Extracted Fields ---
         if data.get("extracted_fields"):
             ws.append(["Field", "Value"])
             for col in range(1, 3):
@@ -831,18 +824,19 @@ def save_form(request):
                     cell.alignment = center_align
                     cell.border = thin_border
 
-            ws.append([])  # blank row after fields
+            ws.append([])
+            ws.append([])
 
-        # --- Extracted Tables (dynamic) ---
+        # --- Extracted Tables ---
         for table in data.get("extracted_table", []):
             for table_name, rows in table.items():
                 if not rows:
                     continue
 
-                # Add merged table title
-                ws.append([])
+                # Add merged title row
+                
                 start_row = ws.max_row + 1
-                num_cols = len(list(rows.values())[0]) + 1  # size col + data cols
+                num_cols = len(rows[0])  # number of keys in first row
                 ws.merge_cells(start_row=start_row, start_column=1, end_row=start_row, end_column=num_cols)
                 title_cell = ws.cell(row=start_row, column=1, value=table_name)
                 title_cell.font = title_font
@@ -850,19 +844,25 @@ def save_form(request):
                 title_cell.fill = title_fill
                 title_cell.border = thin_border
 
-                # Add table headers dynamically
-                headers = ["SIZE"] + list(list(rows.values())[0].keys())
+                # Headers dynamically from row keys
+                headers = list(rows[0].keys())
+
                 ws.append(headers)
+
                 for col in range(1, len(headers) + 1):
+                    
                     cell = ws.cell(row=ws.max_row, column=col)
                     cell.font = bold_font
                     cell.fill = header_fill
                     cell.alignment = center_align
                     cell.border = thin_border
 
-                # Add table rows dynamically
-                for row_name, row_data in rows.items():
-                    row_values = [row_name] + [row_data.get(h, "") for h in headers[1:]]
+                # Write rows
+                for row in rows:
+
+                    row_values = [row.get(h, "") for h in headers]
+                    
+                    
                     ws.append(row_values)
                     for col in range(1, len(headers) + 1):
                         cell = ws.cell(row=ws.max_row, column=col)
@@ -874,7 +874,7 @@ def save_form(request):
             max_length = max(len(str(cell.value)) if cell.value else 0 for cell in col)
             ws.column_dimensions[col[0].column_letter].width = max_length + 2
 
-        # Save temp file
+        # Save temporary file
         tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
         wb.save(tmp_file.name)
 
@@ -992,8 +992,7 @@ def extract_table_rows_from_file(request):
             })
 
 
-    for row in sorted_rows:
-        print(row)
+    
 
     return JsonResponse(sorted_rows, safe=False)
 
