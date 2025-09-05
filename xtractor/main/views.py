@@ -21,7 +21,7 @@ from django.contrib.auth import logout, update_session_auth_hash
 from django.http import JsonResponse, HttpResponseRedirect, HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from .services.azure_vision import analyze_image
-from .models import  ComponentType, FormObject, HeaderObjects, RowObjects, FieldObject, FormName
+from .models import  ComponentType, FormObject, HeaderObjects, RowObjects, FieldObject, FormName, Extraction, ExtractedFields, ExtractedTable
 from .forms import TypeForm, FormObjectForm, HeaderObjectsForm, RowObjectsForm, FieldObjectForm, ChangePasswordForm
 
 
@@ -789,7 +789,7 @@ def ocr_result_view(request):
 def save_form(request):
     if request.method == "POST":
         data = json.loads(request.body.decode("utf-8"))
-        
+
         wb = Workbook()
         ws = wb.active
         ws.title = "Extracted Data"
@@ -825,7 +825,6 @@ def save_form(request):
                     cell.border = thin_border
 
             ws.append([])
-            ws.append([])
 
         # --- Extracted Tables ---
         for table in data.get("extracted_table", []):
@@ -834,7 +833,7 @@ def save_form(request):
                     continue
 
                 # Add merged title row
-                
+                ws.append([])
                 start_row = ws.max_row + 1
                 num_cols = len(rows[0])  # number of keys in first row
                 ws.merge_cells(start_row=start_row, start_column=1, end_row=start_row, end_column=num_cols)
@@ -847,10 +846,14 @@ def save_form(request):
                 # Headers dynamically from row keys
                 headers = list(rows[0].keys())
 
-                ws.append(headers)
+                # Replace "NA"/"N/A"/"na" with blank
+                display_headers = [
+                    "" if str(h).strip().lower() in ["na", "n/a"] else h
+                    for h in headers
+                ]
 
+                ws.append(display_headers)
                 for col in range(1, len(headers) + 1):
-                    
                     cell = ws.cell(row=ws.max_row, column=col)
                     cell.font = bold_font
                     cell.fill = header_fill
@@ -859,10 +862,7 @@ def save_form(request):
 
                 # Write rows
                 for row in rows:
-
                     row_values = [row.get(h, "") for h in headers]
-                    
-                    
                     ws.append(row_values)
                     for col in range(1, len(headers) + 1):
                         cell = ws.cell(row=ws.max_row, column=col)
@@ -882,6 +882,7 @@ def save_form(request):
         return JsonResponse({"success": True, "download_url": download_url})
 
     return JsonResponse({"success": False, "error": "Invalid request"}, status=400)
+
 
 
 def download_excel(request, filename):
