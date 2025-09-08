@@ -604,73 +604,74 @@ def ocr_result_view(request):
 
     form_name = FormName.objects.get(pk=template_id)
 
-    lines = [] #line of texts extracted
+    lines = []  # line of texts extracted
     for block in ocr_data["readResult"]["blocks"]:
         for line in block["lines"]:
             center = get_center(line["boundingPolygon"])
+            # Collect word-level confidences
+            word_confs = [w.get("confidence", 1.0) for w in line.get("words", [])]
+            avg_conf = np.mean(word_confs) if word_confs else 1.0
+
             lines.append({
                 "text": line["text"],
                 "center": center,
-                "bbox": line["boundingPolygon"]
+                "bbox": line["boundingPolygon"],
+                "confidence": round(float(avg_conf), 3)  # keep 3 decimals
             })
 
     # === EXTRA TOTALS ===
-    
     fields_to_find = list(
         FormObject.objects
-        .filter(form_name=form_name, type__type="Field")  # ✅ follow FK -> field
+        .filter(form_name=form_name, type__type="Field")
         .values_list('title', flat=True)
     )
 
     extra_totals = {}
 
     for field in fields_to_find:
-        reject_anchor_y = None
         for line in lines:
             text_upper = line["text"]
             if text_upper.startswith(field):
                 rest = text_upper[len(field):].strip()
                 if rest:
-                    extra_totals[field] = rest
+                    extra_totals[field] = {
+                        "text": rest,
+                        "confidence": line.get("confidence", 1.0)
+                    }
                 else:
                     label_x, label_y = line["center"]
-                    candidates = [c for c in lines if c != line and c["center"][0] > label_x and abs(c["center"][1] - label_y) < 10]
+                    candidates = [
+                        c for c in lines
+                        if c != line and c["center"][0] > label_x and abs(c["center"][1] - label_y) < 10
+                    ]
                     if candidates:
                         candidates.sort(key=lambda c: c["center"][0])
-                        extra_totals[field] = candidates[0]["text"]
+                        chosen = candidates[0]
+                        extra_totals[field] = {
+                            "text": chosen["text"],
+                            "confidence": chosen.get("confidence", 1.0)
+                        }
                     else:
-                        extra_totals[field] = "N/A"
+                        extra_totals[field] = {"text": "N/A", "confidence": 0.0}
                 break
     
+    # === TABLES ===
     tables = []
     table_name = list(
         FormObject.objects
         .filter(form_name=form_name, type__type="Table")
-        .values_list('title', flat=True)  # change 'title' to the correct field name
+        .values_list('title', flat=True)
     )
   
-    # table_name = ["05-01-25"]
-    # table_name = ["04- 30 -25"]
-    
-    # table_name = ["COLLECTED GOOD EGGS"]
     for t in table_name:
-        #table_name = "COLLECTED REJECT EGGS"
-
         table = FormObject.objects.get(title=t)
-     
-        
-
-
         reject_anchor_y = None
 
-           
         for line in lines:
-
             if line["text"] == table.title:
                 reject_anchor_x, reject_anchor_y = line["center"]
                 break
 
-        #header_names = ["QUANTITY", "TOTAL"]
         label_header = (
             HeaderObjects.objects
             .filter(form_object=table, header_type="label")
@@ -686,29 +687,20 @@ def ocr_result_view(request):
         )
 
         header_x_positions = {}
-
         if reject_anchor_y is not None:
             closest_headers = {}
-
             for line in lines:
                 text = line["text"]
                 cx, cy = line["center"]
 
-                # Only consider lines below the table title (with margin)
                 if cy <= reject_anchor_y + 5:
                     continue
 
                 if text in header_names:
                     vertical_distance = cy - reject_anchor_y
                     horizontal_distance = abs(cx - reject_anchor_x)
-
-                    # Option 1: Euclidean distance
                     total_distance = (vertical_distance ** 2 + horizontal_distance ** 2) ** 0.5
 
-                    # Option 2: Weighted sum (tune weights as needed)
-                    # total_distance = vertical_distance + 0.5 * horizontal_distance
-
-                    # Choose the closest header based on combined distance
                     if (
                         text not in closest_headers or
                         total_distance < closest_headers[text]["total_distance"]
@@ -720,15 +712,8 @@ def ocr_result_view(request):
                             "line": line
                         }
 
-            # Extract final x-positions
             for text, info in closest_headers.items():
                 header_x_positions[text] = info["cx"]
-                
-
-
-       
-
-        #row_names = ['SUPER JUMBO', 'JUMBO', 'EXTRA LARGE', 'LARGE', 'MEDIUM', 'SMALL', "EXTRA SMALL", 'PEWEE']
 
         row_names = list(
             RowObjects.objects
@@ -747,36 +732,44 @@ def ocr_result_view(request):
                 ):
                     field_y = line["center"][1]
                     label_x = line["center"][0]
-                    same_row = [l for l in lines if abs(l["center"][1] - field_y) < 15.6 and l["center"][0] > label_x + 5]
+                    same_row = [
+                        l for l in lines
+                        if abs(l["center"][1] - field_y) < 15.6 and l["center"][0] > label_x + 5
+                    ]
 
                     field_values = {}
                     for col in header_names:
                         col_x = header_x_positions.get(col)
                         if col_x is None:
-                            field_values[col] = "N/A"
+                            field_values[col] = {"text": "N/A", "confidence": 0.0}
                             continue
                         header_info = closest_headers.get(col)
                         if not header_info:
-                            field_values[col] = "N/A"
+                            field_values[col] = {"text": "N/A", "confidence": 0.0}
                             continue
                         header_bbox = header_info["line"]["bbox"]
                         matches = [l for l in same_row if is_same_column(header_bbox, l["bbox"])]
                         closest = min(matches, key=lambda l: abs(l["center"][0] - col_x), default=None)
-                        field_values[col] = closest["text"] if closest else "N/A"
+                        if closest:
+                            field_values[col] = {
+                                "text": closest["text"],
+                                "confidence": closest.get("confidence", 1.0)
+                            }
+                        else:
+                            field_values[col] = {"text": "N/A", "confidence": 0.0}
 
-                    # ✅ Add SIZE into row object
-                    row_object = {label_header: field}
+                    row_object = {
+                        label_header: {
+                            "text": field,
+                            "confidence": line.get("confidence", 1.0)
+                        }
+                    }
                     row_object.update(field_values)
                     reject_table.append(row_object)
                     break
 
-                
-        tables.append({t:reject_table})
-        d = {
-            "extracted_table": tables,
-            "extracted_fields": extra_totals
-        }
-        
+        tables.append({t: reject_table})
+    print(tables)
     return JsonResponse({
         "extracted_table": tables,
         "extracted_fields": extra_totals
@@ -786,15 +779,34 @@ def ocr_result_view(request):
 
 
 
+
 def save_form(request):
     if request.method == "POST":
         data = json.loads(request.body.decode("utf-8"))
 
+        # --- Save to DB ---
+        extraction = Extraction.objects.create(source="azure-ocr")
+
+        if data.get("extracted_fields"):
+            ExtractedFields.objects.create(
+                extraction=extraction,
+                fields=data["extracted_fields"]
+            )
+
+        for table in data.get("extracted_table", []):
+            for table_name, rows in table.items():
+                ExtractedTable.objects.create(
+                    extraction=extraction,
+                    table_name=table_name,
+                    data=rows
+                )
+
+        # --- Generate Excel ---
         wb = Workbook()
         ws = wb.active
         ws.title = "Extracted Data"
 
-        # --- Define styles ---
+        # Styles
         header_fill = PatternFill(start_color="FFD966", end_color="FFD966", fill_type="solid")
         title_fill = PatternFill(start_color="F4B084", end_color="F4B084", fill_type="solid")
         bold_font = Font(bold=True)
@@ -807,7 +819,7 @@ def save_form(request):
             bottom=Side(style="thin"),
         )
 
-        # --- Extracted Fields ---
+        # Fields
         if data.get("extracted_fields"):
             ws.append(["Field", "Value"])
             for col in range(1, 3):
@@ -826,16 +838,16 @@ def save_form(request):
 
             ws.append([])
 
-        # --- Extracted Tables ---
+        # Tables
         for table in data.get("extracted_table", []):
             for table_name, rows in table.items():
                 if not rows:
                     continue
 
-                # Add merged title row
+                # Title
                 ws.append([])
                 start_row = ws.max_row + 1
-                num_cols = len(rows[0])  # number of keys in first row
+                num_cols = len(rows[0])
                 ws.merge_cells(start_row=start_row, start_column=1, end_row=start_row, end_column=num_cols)
                 title_cell = ws.cell(row=start_row, column=1, value=table_name)
                 title_cell.font = title_font
@@ -843,10 +855,8 @@ def save_form(request):
                 title_cell.fill = title_fill
                 title_cell.border = thin_border
 
-                # Headers dynamically from row keys
+                # Headers (blank out "NA", "N/A", "na")
                 headers = list(rows[0].keys())
-
-                # Replace "NA"/"N/A"/"na" with blank
                 display_headers = [
                     "" if str(h).strip().lower() in ["na", "n/a"] else h
                     for h in headers
@@ -860,7 +870,7 @@ def save_form(request):
                     cell.alignment = center_align
                     cell.border = thin_border
 
-                # Write rows
+                # Rows
                 for row in rows:
                     row_values = [row.get(h, "") for h in headers]
                     ws.append(row_values)
@@ -869,20 +879,23 @@ def save_form(request):
                         cell.alignment = center_align
                         cell.border = thin_border
 
-        # --- Auto column widths ---
+        # Auto column widths
         for col in ws.columns:
             max_length = max(len(str(cell.value)) if cell.value else 0 for cell in col)
             ws.column_dimensions[col[0].column_letter].width = max_length + 2
 
-        # Save temporary file
+        # Save file
         tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
         wb.save(tmp_file.name)
 
         download_url = f"/download_excel/{os.path.basename(tmp_file.name)}"
-        return JsonResponse({"success": True, "download_url": download_url})
+        return JsonResponse({
+            "success": True,
+            "download_url": download_url,
+            "extraction_id": extraction.id  # ✅ return ID so you can fetch later
+        })
 
     return JsonResponse({"success": False, "error": "Invalid request"}, status=400)
-
 
 
 def download_excel(request, filename):
@@ -897,6 +910,9 @@ def download_excel(request, filename):
         )
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response
+
+
+
 
 
 
