@@ -278,12 +278,11 @@
 
                                         let bgColor = "";
                                         if (confidence !== null) {
-                                            if (confidence >= 0.95 && confidence <= 0.99) bgColor = `class="bg-success"`;
-                                            else if (confidence >= 0.90 && confidence <= 0.94) bgColor = `style = "background-color: #FFD966;""`;
-                                            else if (confidence >= 0.80 && confidence <= 0.89) bgColor = `style = "background-color: #FFA500;""`;
-                                            else bgColor = `class="bg-danger"`;
+                                            if (confidence >= 0.8) bgColor = "background-color: #d4edda;";
+                                            else if (confidence >= 0.5) bgColor = "background-color: #fff3cd;";
+                                            else bgColor = "background-color: #f8d7da;";
                                         }
-                                        
+
                                         $("#field_container").append(`
                                             <div class="mb-1 row align-items-center field-item">
                                                 <label class="col-auto col-form-label">${field}</label>
@@ -295,7 +294,7 @@
                                                            data-field="${field}"
                                                            data-original="${valText}"
                                                            data-confidence="${confidence || 0}"
-                                                           ${bgColor}>
+                                                           style="${bgColor}">
                                                 </div>
                                             </div>
                                         `);
