@@ -90,10 +90,8 @@ class FieldObject(models.Model):
 
 
 class Extraction(models.Model):
-    """
-    Represents one OCR extraction job (one upload or one API call).
-    """
     source = models.CharField(max_length=255, blank=True, null=True)  # e.g., filename, API source
+    form_name = models.ForeignKey(FormName, on_delete=models.SET_NULL, null=True, blank=True)
     uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -102,10 +100,6 @@ class Extraction(models.Model):
 
 
 class ExtractedFields(models.Model):
-    """
-    Stores key-value fields (dynamic), saved as JSON.
-    Example: {"InvoiceNo": "12345", "Date": "2025-09-03"}
-    """
     extraction = models.ForeignKey(Extraction, on_delete=models.CASCADE, related_name="fields")
     fields = models.JSONField()
 
@@ -114,16 +108,6 @@ class ExtractedFields(models.Model):
 
 
 class ExtractedTable(models.Model):
-    """
-    Stores table-like data (dynamic headers & rows), saved as JSON.
-    Example:
-      {
-        "COLLECTED GOOD EGGS": [
-            {"SIZE": "JUMBO", "QUANTITY": "2cs - 4Ty - 5", "TOTAL": "845"},
-            {"SIZE": "LARGE", "QUANTITY": "4cs - 7Ty", "TOTAL": "2010"}
-        ]
-      }
-    """
     extraction = models.ForeignKey(Extraction, on_delete=models.CASCADE, related_name="tables")
     table_name = models.CharField(max_length=255)
     data = models.JSONField()  # array of dicts (rows)

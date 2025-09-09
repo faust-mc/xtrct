@@ -392,6 +392,8 @@
 
             tableObj[tableName] = rows;
             result.extracted_table.push(tableObj);
+            result['template'] = parseInt($("#template").val());
+            
         });
 
         $.ajax({
