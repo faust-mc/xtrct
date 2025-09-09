@@ -32,10 +32,26 @@
         padding: 0.75rem 0.75rem;
     }
 
-    .conf-green { background-color: #d4edda !important; }   /* light green */
-    .conf-yellow { background-color: #fff3cd !important; }  /* light yellow */
-    .conf-orange { background-color: #ffe5b4 !important; }  /* light orange */
-    .conf-red { background-color: #f8d7da !important; }     /* light red */
+    .conf-green {
+        background-color: #d4edda !important;
+    }
+
+    /* light green */
+    .conf-yellow {
+        background-color: #fff3cd !important;
+    }
+
+    /* light yellow */
+    .conf-orange {
+        background-color: #ffe5b4 !important;
+    }
+
+    /* light orange */
+    .conf-red {
+        background-color: #f8d7da !important;
+    }
+
+    /* light red */
 </style>
 {% endblock %}
 
@@ -51,7 +67,7 @@
                 <select class="form-select" id="template" name="template" required>
                     <option value="" selected>-- Choose type --</option>
                     {% for f in forms %}
-                        <option value="{{ f.pk }}">{{ f.name }}</option>
+                    <option value="{{ f.pk }}">{{ f.name }}</option>
                     {% endfor %}
                 </select>
                 <label for="template">Select Template</label>
@@ -63,16 +79,14 @@
             {% csrf_token %}
             <div class="dz-message">Drop an image here, or click to select</div>
         </form>
-
         <!-- Modal -->
-        <div class="modal fade" id="staticPreview" data-bs-backdrop="static" data-bs-keyboard="false"
-             tabindex="-1" aria-labelledby="staticPreviewLabel" aria-hidden="true">
+        <div class="modal fade" id="staticPreview" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+            aria-labelledby="staticPreviewLabel" aria-hidden="true">
             <div class="modal-dialog modal-xl modal-dialog-scrollable">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title" id="staticPreviewLabel">Preview</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"
-                                aria-label="Close"></button>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
                         <ul>
@@ -84,12 +98,12 @@
                             <li class=" d-flex align-items-center">
                                 <span class="badge rounded-circle me-2"
                                     style="background-color:#FFD966; width:15px; height:15px;">&nbsp;</span>
-                                Above Average
+                                Above Extracted Average
                             </li>
                             <li class=" d-flex align-items-center">
                                 <span class="badge rounded-circle me-2"
                                     style="background-color:#FFA500; width:15px; height:15px;">&nbsp;</span>
-                                Below Average
+                                Below Extracted Average
                             </li>
                             <li class=" d-flex align-items-center">
                                 <span class="badge bg-danger rounded-circle me-2"
@@ -202,11 +216,11 @@
                             <h6>Breakdown</h6>
                             <ul style="padding-left:20px;">
                                 ${Object.entries(response.breakdown).map(([key, val]) => {
-                                    let displayVal = (typeof val === "number" && val < 1)
-                                        ? (val * 100).toFixed(2) + "%"
-                                        : val;
-                                    return `<li><strong>${key}:</strong> ${displayVal}</li>`;
-                                }).join("")}
+                    let displayVal = (typeof val === "number" && val < 1)
+                        ? (val * 100).toFixed(2) + "%"
+                        : val;
+                    return `<li><strong>${key}:</strong> ${displayVal}</li>`;
+                }).join("")}
                             </ul>
                         ` : ""}
                     </div>`;
@@ -264,11 +278,12 @@
 
                                         let bgColor = "";
                                         if (confidence !== null) {
-                                            if (confidence >= 0.8) bgColor = "background-color: #d4edda;";
-                                            else if (confidence >= 0.5) bgColor = "background-color: #fff3cd;";
-                                            else bgColor = "background-color: #f8d7da;";
+                                            if (confidence >= 0.95 && confidence <= 0.99) bgColor = `class="bg-success"`;
+                                            else if (confidence >= 0.90 && confidence <= 0.94) bgColor = `style = "background-color: #FFD966;""`;
+                                            else if (confidence >= 0.80 && confidence <= 0.89) bgColor = `style = "background-color: #FFA500;""`;
+                                            else bgColor = `class="bg-danger"`;
                                         }
-
+                                        
                                         $("#field_container").append(`
                                             <div class="mb-1 row align-items-center field-item">
                                                 <label class="col-auto col-form-label">${field}</label>
@@ -280,7 +295,7 @@
                                                            data-field="${field}"
                                                            data-original="${valText}"
                                                            data-confidence="${confidence || 0}"
-                                                           style="${bgColor}">
+                                                           ${bgColor}>
                                                 </div>
                                             </div>
                                         `);
@@ -332,8 +347,8 @@
                                                 <thead class="table-light">
                                                     <tr>
                                                         ${headers.map(h => {
-                                                            return `<th>${["NA", "N/A", "na"].includes(h.trim()) ? "" : h}</th>`;
-                                                        }).join("")}
+                                            return `<th>${["NA", "N/A", "na"].includes(h.trim()) ? "" : h}</th>`;
+                                        }).join("")}
                                                     </tr>
                                                 </thead>
                                                 <tbody>`;
@@ -475,37 +490,37 @@
 
     // Remove color on edit
     // Attach listener after table is rendered
-// Attach listener after table is rendered
-$("#table_container").on("input", ".editable", function () {
-    let val = $(this).text().trim();
-    let original = $(this).data("original");
-    let conf = parseFloat($(this).data("confidence"));
+    // Attach listener after table is rendered
+    $("#table_container").on("input", ".editable", function () {
+        let val = $(this).text().trim();
+        let original = $(this).data("original");
+        let conf = parseFloat($(this).data("confidence"));
 
-    // Try to compare numbers correctly
-    let isNumber = !isNaN(val) && !isNaN(original);
+        // Try to compare numbers correctly
+        let isNumber = !isNaN(val) && !isNaN(original);
 
-    if (isNumber) {
-        val = parseFloat(val);
-        original = parseFloat(original);
-    }
+        if (isNumber) {
+            val = parseFloat(val);
+            original = parseFloat(original);
+        }
 
-    if (val !== original) {
-        // User changed → remove confidence color
-        $(this).removeClass("conf-green conf-yellow conf-orange conf-red");
-        $(this).removeAttr("title");
-    } else {
-        // Restore confidence color & tooltip
-        let cls = "";
-        if (conf >= 0.95) cls = "conf-green";
-        else if (conf >= 0.90) cls = "conf-yellow";
-        else if (conf >= 0.80) cls = "conf-orange";
-        else cls = "conf-red";
+        if (val !== original) {
+            // User changed → remove confidence color
+            $(this).removeClass("conf-green conf-yellow conf-orange conf-red");
+            $(this).removeAttr("title");
+        } else {
+            // Restore confidence color & tooltip
+            let cls = "";
+            if (conf >= 0.95) cls = "conf-green";
+            else if (conf >= 0.90) cls = "conf-yellow";
+            else if (conf >= 0.80) cls = "conf-orange";
+            else cls = "conf-red";
 
-        $(this).removeClass("conf-green conf-yellow conf-orange conf-red")
-               .addClass(cls)
-               .attr("title", `Confidence: ${(conf * 100).toFixed(1)}%`);
-    }
-});
+            $(this).removeClass("conf-green conf-yellow conf-orange conf-red")
+                .addClass(cls)
+                .attr("title", `Confidence: ${(conf * 100).toFixed(1)}%`);
+        }
+    });
 
 
 </script>
