@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}Text Extractor{% endblock %}
+{% block styles %}
+<style> .dropzone { border: 2px dashed #007bff; border-radius: 10px; background: #f8f9fa; width: 100%; height: 200px; display: flex; justify-content: center; align-items: center; text-align: center; margin: 20px auto; } .dropzone .dz-message { font-size: 16px; color: #555; } /* Fix for Select2 inside form-floating */ .form-floating>.select2-container--default .select2-selection--single { height: calc(3.5rem + 2px); padding-top: 1.625rem; } .form-floating>label { padding: 0.75rem 0.75rem; } .conf-green { background-color: #d4edda !important; } /* light green */ .conf-yellow { background-color: #fff3cd !important; } /* light yellow */ .conf-orange { background-color: #ffe5b4 !important; } /* light orange */ .conf-red { background-color: #f8d7da !important; } /* light red */ .preview-card { cursor: pointer; transition: transform 0.2s ease-in-out; } .preview-card:hover { transform: scale(1.05); } .preview-image { width: 100%; height: 120px; object-fit: cover; border-radius: 6px; } .template-title { font-size: 14px; font-weight: bold; margin-top: 8px; } .fields-preview { font-size: 12px; color: #555; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="container mt-4">
+
+  <!-- 🔍 Filter Form -->
+  <div class="row mb-3">
+    <div class="col-md-3">
+      <input type="text" id="formName" class="form-control" placeholder="Form name">
+    </div>
+    <div class="col-md-3">
+      <input type="date" id="startDate" class="form-control">
+    </div>
+    <div class="col-md-3">
+      <input type="date" id="endDate" class="form-control">
+    </div>
+    <div class="col-md-3">
+      <button class="btn btn-primary w-100" onclick="loadData(1)">Filter</button>
+    </div>
+  </div>
+
+  <!-- Cards -->
+  <div class="row" id="preview-container"></div>
+
+  <!-- Pagination -->
+  <div class="d-flex justify-content-center mt-3">
+    <nav>
+      <ul class="pagination" id="pagination"></ul>
+    </nav>
+  </div>
+</div>
+
+<script>
+function renderCards(data) {
+  const container = document.getElementById("preview-container");
+  container.innerHTML = "";
+
+  data.forEach(item => {
+    let html = `
+      <div class="col-md-4 preview-card">
+        <div class="card shadow-sm mb-4" style="height: 280px; overflow: hidden;">
+          <div class="card-header fw-bold">${item.template || "Untitled Form"}</div>
+          <div class="card-body" style="font-size: 0.8rem; overflow-y: auto; max-height: 200px;">`;
+
+    // Fields
+    html += `<div><strong>Fields</strong></div><ul class="list-unstyled mb-2">`;
+    if (item.extracted_fields && Object.keys(item.extracted_fields).length > 0) {
+      Object.entries(item.extracted_fields).forEach(([key, val]) => {
+        html += `<li><span class="fw-bold">${key}</span> ${val}</li>`;
+      });
+    } else {
+      html += `<li class="text-muted">No fields</li>`;
+    }
+    html += `</ul>`;
+
+    // Tables
+    html += `<div><strong>Tables</strong></div>`;
+    if (item.extracted_table && item.extracted_table.length > 0) {
+      item.extracted_table.forEach(tableObj => {
+        let tableName = Object.keys(tableObj)[0];
+        let rows = tableObj[tableName];
+        if (!rows || rows.length === 0) return;
+        let headers = Object.keys(rows[0]);
+        html += `
+          <div class="mb-2">
+            <small class="fw-bold">${tableName}</small>
+            <table class="table table-bordered table-sm mb-1" style="font-size: 0.7rem;">
+              <thead class="table-light">
+                <tr>${headers.map(h => `<th>${h}</th>`).join("")}</tr>
+              </thead>
+              <tbody>`;
+        rows.forEach(r => {
+          html += "<tr>";
+          headers.forEach(h => html += `<td>${r[h] || ""}</td>`);
+          html += "</tr>";
+        });
+        html += `</tbody></table></div>`;
+      });
+    } else {
+      html += `<div class="text-muted">No tables</div>`;
+    }
+
+    html += `</div></div></div>`;
+    container.innerHTML += html;
+  });
+}
+
+function renderPagination(pagination) {
+  const paginationContainer = document.getElementById("pagination");
+  paginationContainer.innerHTML = "";
+
+  if (pagination.total_pages <= 1) return;
+
+  if (pagination.has_prev) {
+    paginationContainer.innerHTML += `<li class="page-item"><a class="page-link" href="#" onclick="loadData(${pagination.page - 1})">Previous</a></li>`;
+  }
+
+  for (let i = 1; i <= pagination.total_pages; i++) {
+    paginationContainer.innerHTML += `<li class="page-item ${i === pagination.page ? 'active' : ''}">
+      <a class="page-link" href="#" onclick="loadData(${i})">${i}</a></li>`;
+  }
+
+  if (pagination.has_next) {
+    paginationContainer.innerHTML += `<li class="page-item"><a class="page-link" href="#" onclick="loadData(${pagination.page + 1})">Next</a></li>`;
+  }
+}
+
+function loadData(page = 1) {
+  const formName = document.getElementById("formName").value;
+  const startDate = document.getElementById("startDate").value;
+  const endDate = document.getElementById("endDate").value;
+
+  fetch(`/filter_data/?page=${page}&form_name=${formName}&start_date=${startDate}&end_date=${endDate}`)
+    .then(res => res.json())
+    .then(data => {
+      renderCards(data.results);
+      renderPagination(data.pagination);
+    });
+}
+
+// Load first page on page load
+document.addEventListener("DOMContentLoaded", () => loadData(1));
+</script>
+{% endblock %}

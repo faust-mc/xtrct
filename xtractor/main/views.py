@@ -4,6 +4,7 @@ import json, tempfile, os
 import pprint
 import requests
 import numpy as np
+from datetime import datetime
 from collections import defaultdict
 from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
@@ -783,9 +784,10 @@ def ocr_result_view(request):
 def save_form(request):
     if request.method == "POST":
         data = json.loads(request.body.decode("utf-8"))
-
+        form_template = FormName.objects.get(pk=data['template'])
+        print(data)
         # --- Save to DB ---
-        extraction = Extraction.objects.create(source="azure-ocr")
+        extraction = Extraction.objects.create(source="azure-ocr", form_name= form_template, uploaded_by=request.user)
 
         if data.get("extracted_fields"):
             ExtractedFields.objects.create(
@@ -911,6 +913,72 @@ def download_excel(request, filename):
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response
 
+
+
+def get_files(request):
+    return render(request, 'get_files.html')
+
+
+
+from django.core.paginator import Paginator
+
+@csrf_exempt
+def filter_data(request):
+    form_name = request.GET.get("form_name", "")
+    start_date = request.GET.get("start_date", "")
+    end_date = request.GET.get("end_date", "")
+    page = int(request.GET.get("page", 1))
+    per_page = int(request.GET.get("per_page", 6))  # cards per page
+
+    qs = Extraction.objects.all().order_by("-created_at")
+
+    # Filter by form_name
+    if form_name:
+        qs = qs.filter(form_name__name__icontains=form_name)
+
+    # Filter by date range
+    if start_date and end_date:
+        try:
+            start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
+            end_date_obj = datetime.strptime(end_date, "%Y-%m-%d").date()
+            qs = qs.filter(created_at__date__range=(start_date_obj, end_date_obj))
+        except ValueError:
+            return JsonResponse({"error": "Invalid date format. Use YYYY-MM-DD"}, status=400)
+
+    # Pagination
+    paginator = Paginator(qs, per_page)
+    page_obj = paginator.get_page(page)
+
+    results = []
+    for extraction in page_obj.object_list:
+        extraction_dict = {
+            "template": extraction.form_name.name if extraction.form_name else None,
+            "extracted_table": [],
+            "extracted_fields": {}
+        }
+
+        # Tables
+        for table in extraction.tables.all():
+            extraction_dict["extracted_table"].append({
+                table.table_name: table.data
+            })
+
+        # Fields
+        for field in extraction.fields.all():
+            for key, value in field.fields.items():
+                extraction_dict["extracted_fields"][key] = value
+
+        results.append(extraction_dict)
+
+    return JsonResponse({
+        "results": results,
+        "pagination": {
+            "page": page_obj.number,
+            "total_pages": paginator.num_pages,
+            "has_next": page_obj.has_next(),
+            "has_prev": page_obj.has_previous()
+        }
+    }, safe=False, json_dumps_params={"indent": 4})
 
 
 
