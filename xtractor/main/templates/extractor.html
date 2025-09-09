@@ -3,7 +3,6 @@
 {% block title %}Text Extractor{% endblock %}
 
 {% block styles %}
-
 <style>
     .dropzone {
         border: 2px dashed #007bff;
@@ -32,6 +31,11 @@
     .form-floating>label {
         padding: 0.75rem 0.75rem;
     }
+
+    .conf-green { background-color: #d4edda !important; }   /* light green */
+    .conf-yellow { background-color: #fff3cd !important; }  /* light yellow */
+    .conf-orange { background-color: #ffe5b4 !important; }  /* light orange */
+    .conf-red { background-color: #f8d7da !important; }     /* light red */
 </style>
 {% endblock %}
 
@@ -47,9 +51,8 @@
                 <select class="form-select" id="template" name="template" required>
                     <option value="" selected>-- Choose type --</option>
                     {% for f in forms %}
-                    <option value="{{f.pk}}">{{f.name}}</option>
+                        <option value="{{ f.pk }}">{{ f.name }}</option>
                     {% endfor %}
-
                 </select>
                 <label for="template">Select Template</label>
             </div>
@@ -62,13 +65,14 @@
         </form>
 
         <!-- Modal -->
-        <div class="modal fade" id="staticPreview" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
-            aria-labelledby="staticPreviewLabel" aria-hidden="true">
+        <div class="modal fade" id="staticPreview" data-bs-backdrop="static" data-bs-keyboard="false"
+             tabindex="-1" aria-labelledby="staticPreviewLabel" aria-hidden="true">
             <div class="modal-dialog modal-xl modal-dialog-scrollable">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title" id="staticPreviewLabel">Preview</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
                         <ul>
@@ -127,9 +131,7 @@
 {% endblock %}
 
 {% block scripts %}
-
 <script>
-
     $(document).ready(function () {
         // Handle field change (AJAX)
         $(document).on("change", ".field-input", function () {
@@ -139,8 +141,7 @@
                 value: $(this).val()
             };
 
-
-
+            // Example for later:
             // $.ajax({
             //     url: "/update-field/",
             //     type: "POST",
@@ -161,7 +162,6 @@
                 value: $(this).text().trim()
             };
 
-
             $.ajax({
                 url: "/update-cell/",
                 type: "POST",
@@ -176,8 +176,8 @@
     Dropzone.autoDiscover = false;
 
     const myDropzone = new Dropzone("#myDropzone", {
-        url: "{% url 'main:get_ave' %}",   // Django URL
-        paramName: "file",                // match your Django view
+        url: "{% url 'main:get_ave' %}",
+        paramName: "file",
         maxFiles: 1,
         maxFilesize: 250,
         acceptedFiles: "image/*",
@@ -193,22 +193,23 @@
             this.on("success", function (file, response) {
                 console.log("Uploaded:", response);
 
-
                 let htmlContent = `
-        <div style="text-align:left;">
-            <h6>Reliability Score</h6>
-            <p style="font-size:1.2em;"><strong>${response.score.toFixed(2)}%</strong></p>
-            <hr>
-            ${response.breakdown ? `
-            <h6>Breakdown</h6>
-            <ul style="padding-left:20px;">
-                ${Object.entries(response.breakdown).map(([key, val]) => {
-                    let displayVal = (typeof val === "number" && val < 1) ? (val * 100).toFixed(2) + "%" : val;
-                    return `<li><strong>${key}:</strong> ${displayVal}</li>`;
-                }).join("")}
-                    </ul>
-                    ` : ""}
-                </div> `;
+                    <div style="text-align:left;">
+                        <h6>Reliability Score</h6>
+                        <p style="font-size:1.2em;"><strong>${response.score.toFixed(2)}%</strong></p>
+                        <hr>
+                        ${response.breakdown ? `
+                            <h6>Breakdown</h6>
+                            <ul style="padding-left:20px;">
+                                ${Object.entries(response.breakdown).map(([key, val]) => {
+                                    let displayVal = (typeof val === "number" && val < 1)
+                                        ? (val * 100).toFixed(2) + "%"
+                                        : val;
+                                    return `<li><strong>${key}:</strong> ${displayVal}</li>`;
+                                }).join("")}
+                            </ul>
+                        ` : ""}
+                    </div>`;
 
                 Swal.fire({
                     title: "OCR Result",
@@ -222,25 +223,28 @@
                 }).then((result) => {
                     if (result.isConfirmed) {
                         let formData = new FormData();
-                        formData.append("file", myDropzone.files[0]);  // the uploaded file
+                        formData.append("file", myDropzone.files[0]);
                         formData.append("template_id", $("#template").val());
 
                         $.ajax({
                             url: "{% url 'main:ocr-result' %}",
                             type: "POST",
                             data: formData,
-                            processData: false,   // prevent jQuery from messing with FormData
+                            processData: false,
                             contentType: false,
                             headers: { "X-CSRFToken": "{{ csrf_token }}" },
                             success: function (res) {
-
+                                console.log(res);
                                 $("#field_container").empty();
                                 $("#table_container").empty();
 
-                                if (!res || ($.isEmptyObject(res.extracted_fields) && (!res.extracted_table || res.extracted_table.length === 0))) {
+                                if (!res || ($.isEmptyObject(res.extracted_fields) &&
+                                    (!res.extracted_table || res.extracted_table.length === 0))) {
                                     $("#field_container").append(`
-            <div class="alert alert-warning">No data was extracted from the file.</div>
-        `);
+                                        <div class="alert alert-warning">
+                                            No data was extracted from the file.
+                                        </div>
+                                    `);
                                     $("#staticPreview").modal("show");
                                     return;
                                 }
@@ -248,52 +252,112 @@
                                 // ==== Fields ====
                                 if (res.extracted_fields && !$.isEmptyObject(res.extracted_fields)) {
                                     $.each(res.extracted_fields, function (field, value) {
+                                        let valText = "";
+                                        let confidence = null;
+
+                                        if (typeof value === "object" && value !== null) {
+                                            valText = value.text || "";
+                                            confidence = value.confidence ?? null;
+                                        } else {
+                                            valText = value || "";
+                                        }
+
+                                        let bgColor = "";
+                                        if (confidence !== null) {
+                                            if (confidence >= 0.8) bgColor = "background-color: #d4edda;";
+                                            else if (confidence >= 0.5) bgColor = "background-color: #fff3cd;";
+                                            else bgColor = "background-color: #f8d7da;";
+                                        }
+
                                         $("#field_container").append(`
-                <div class="mb-1 row align-items-center field">
-                    <label class="col-auto col-form-label">${field}</label>
-                    <div class="col">
-                        <input type="text" 
-                               class="form-control form-control-sm field-input" 
-                               name="fields[${field}]" 
-                               value="${value || ""}" 
-                               data-field="${field}">
-                    </div>
-                </div>
-            `);
+                                            <div class="mb-1 row align-items-center field-item">
+                                                <label class="col-auto col-form-label">${field}</label>
+                                                <div class="col">
+                                                    <input type="text" 
+                                                           class="form-control form-control-sm field-input" 
+                                                           name="fields[${field}]" 
+                                                           value="${valText}" 
+                                                           data-field="${field}"
+                                                           data-original="${valText}"
+                                                           data-confidence="${confidence || 0}"
+                                                           style="${bgColor}">
+                                                </div>
+                                            </div>
+                                        `);
                                     });
+                                }
+
+                                // 🔥 Restore/remove color logic
+                                function applyConfidenceColor(el) {
+                                    let val = $(el).val();
+                                    let original = $(el).data("original");
+                                    let conf = parseFloat($(el).data("confidence"));
+
+                                    if (val !== original) {
+                                        $(el).css("background-color", "");
+                                    } else {
+                                        let bgColor = "";
+                                        if (conf >= 0.8) bgColor = "#d4edda";
+                                        else if (conf >= 0.5) bgColor = "#fff3cd";
+                                        else bgColor = "#f8d7da";
+                                        $(el).css("background-color", bgColor);
+                                    }
+                                }
+
+                                $(document).on("input", ".field-input", function () {
+                                    applyConfidenceColor(this);
+                                });
+
+                                // ==== Helper for table confidence ====
+                                function getConfidenceColor(conf) {
+                                    let pct = conf * 100;
+                                    if (pct === 100) return "";
+                                    if (pct >= 95) return "conf-green";
+                                    if (pct >= 90) return "conf-yellow";
+                                    if (pct >= 80) return "conf-orange";
+                                    return "conf-red";
                                 }
 
                                 // ==== Tables ====
                                 if (res.extracted_table && res.extracted_table.length > 0) {
                                     $.each(res.extracted_table, function (i, tableObj) {
                                         let tableName = Object.keys(tableObj)[0];
-                                        let rows = tableObj[tableName]; // array of row objects
-
+                                        let rows = tableObj[tableName];
                                         if (!rows || rows.length === 0) return;
 
-                                        // Take headers dynamically from first row
                                         let headers = Object.keys(rows[0]);
 
                                         let tableHtml = `<div class="mb-3"><h5>${tableName}</h5>
-                                <table class="table table-bordered table-sm">
-                                    <thead>
-                                       <tr>
-                                        ${headers.map(h => {
-                                            // 👇 If header is NA/N/A/na, show as blank
-                                            return `<th  style="background-color: #FFD966">${["NA", "N/A", "na"].includes(h.trim()) ? "" : h}</th>`;
-                                        }).join("")}
-                                     </tr>
-                                    </thead>
-                                    <tbody>`;
+                                            <table class="table table-bordered table-sm">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        ${headers.map(h => {
+                                                            return `<th>${["NA", "N/A", "na"].includes(h.trim()) ? "" : h}</th>`;
+                                                        }).join("")}
+                                                    </tr>
+                                                </thead>
+                                                <tbody>`;
 
                                         $.each(rows, function (j, rowData) {
                                             tableHtml += `<tr>`;
                                             $.each(headers, function (k, header) {
-                                                let val = rowData[header] || "";
-                                                tableHtml += `<td contenteditable="true" class="editable" 
-                                     data-table="${tableName}" 
-                                     data-row="${j}" 
-                                     data-col="${header}">${val}</td>`;
+                                                let valObj = rowData[header] || {};
+                                                let valText = valObj.text || "";
+                                                let conf = valObj.confidence || 0;
+
+                                                let colorClass = (k === 0) ? "" : getConfidenceColor(conf);
+
+                                                tableHtml += `
+                                                    <td contenteditable="true" 
+                                                        class="editable ${colorClass}"
+                                                        data-table="${tableName}" 
+                                                        data-row="${j}" 
+                                                        data-col="${header}"
+                                                        data-original="${valText}"
+                                                        data-confidence="${conf}"
+                                                        title="Confidence: ${(conf * 100).toFixed(1)}%">
+                                                        ${valText}
+                                                    </td>`;
                                             });
                                             tableHtml += `</tr>`;
                                         });
@@ -305,9 +369,7 @@
 
                                 $("#staticPreview").modal("show");
                             },
-
-
-                            error: function (xhr, status, error) {
+                            error: function () {
                                 Swal.fire("Error", "Failed to send data to backend", "error");
                             }
                         });
@@ -317,20 +379,15 @@
                 });
             });
 
-
             this.on("error", function (file, errorMessage) {
                 Swal.fire("Upload Failed", errorMessage, "error");
             });
         }
     });
 
-
-
+    // Save extracted
     $(document).on("click", "#save_extracted", function () {
-        let result = {
-            extracted_fields: {},
-            extracted_table: []
-        };
+        let result = { extracted_fields: {}, extracted_table: [] };
 
         // Fields
         $("#field_container .field-input").each(function () {
@@ -359,20 +416,16 @@
             result.extracted_table.push(tableObj);
         });
 
-        var json_data = JSON.stringify(result);
-
         $.ajax({
             url: "{% url 'main:save_form' %}",
             type: "POST",
-            data: json_data,
+            data: JSON.stringify(result),
             contentType: "application/json",
             headers: { "X-CSRFToken": "{{ csrf_token }}" },
             success: function (res) {
                 if (res.success && res.download_url) {
                     window.location.href = res.download_url;
-
-                    Swal.fire("success", "Your Excel file has been generated and downloaded.", "success");
-
+                    Swal.fire("Success", "Your Excel file has been generated and downloaded.", "success");
                     $('#staticPreview').modal('hide');
                 } else {
                     Swal.fire("Error", "Could not generate Excel.", "error");
@@ -384,8 +437,7 @@
         });
     });
 
-
-    // Initialize Select2 for searchable dropdown
+    // Select2 init
     $(document).ready(function () {
         $('#template').select2({
             placeholder: "-- Choose type --",
@@ -393,18 +445,12 @@
             width: '100%'
         });
 
-        // When template changes, clear Dropzone files
         $('#template').on('change', function () {
-            myDropzone.removeAllFiles(true); // true = cancel uploads if in progress
-            console.log("Template changed → Dropzone cleared");
+            myDropzone.removeAllFiles(true);
         });
 
-        // When template changes, clear Dropzone files
         $('#ConvertBtn').on('click', function () {
-
             const templateVal = $('#template').val();
-
-            // Check if template is selected
             if (!templateVal) {
                 Swal.fire({
                     title: "Template Required",
@@ -414,8 +460,6 @@
                 });
                 return;
             }
-
-            // Check if at least one file is added
             if (myDropzone.files.length === 0) {
                 Swal.fire({
                     title: "File Required",
@@ -425,10 +469,43 @@
                 });
                 return;
             }
-
             myDropzone.processQueue();
         });
     });
+
+    // Remove color on edit
+    // Attach listener after table is rendered
+// Attach listener after table is rendered
+$("#table_container").on("input", ".editable", function () {
+    let val = $(this).text().trim();
+    let original = $(this).data("original");
+    let conf = parseFloat($(this).data("confidence"));
+
+    // Try to compare numbers correctly
+    let isNumber = !isNaN(val) && !isNaN(original);
+
+    if (isNumber) {
+        val = parseFloat(val);
+        original = parseFloat(original);
+    }
+
+    if (val !== original) {
+        // User changed → remove confidence color
+        $(this).removeClass("conf-green conf-yellow conf-orange conf-red");
+        $(this).removeAttr("title");
+    } else {
+        // Restore confidence color & tooltip
+        let cls = "";
+        if (conf >= 0.95) cls = "conf-green";
+        else if (conf >= 0.90) cls = "conf-yellow";
+        else if (conf >= 0.80) cls = "conf-orange";
+        else cls = "conf-red";
+
+        $(this).removeClass("conf-green conf-yellow conf-orange conf-red")
+               .addClass(cls)
+               .attr("title", `Confidence: ${(conf * 100).toFixed(1)}%`);
+    }
+});
 
 
 </script>
