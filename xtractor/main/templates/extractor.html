@@ -71,6 +71,28 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
+                        <ul>
+                            <li class="d-flex align-items-center">
+                                <span class="badge bg-success rounded-circle me-2"
+                                    style="width:15px; height:15px;">&nbsp;</span>
+                                High Extracted Average
+                            </li>
+                            <li class=" d-flex align-items-center">
+                                <span class="badge rounded-circle me-2"
+                                    style="background-color:#FFD966; width:15px; height:15px;">&nbsp;</span>
+                                Above Average
+                            </li>
+                            <li class=" d-flex align-items-center">
+                                <span class="badge rounded-circle me-2"
+                                    style="background-color:#FFA500; width:15px; height:15px;">&nbsp;</span>
+                                Below Average
+                            </li>
+                            <li class=" d-flex align-items-center">
+                                <span class="badge bg-danger rounded-circle me-2"
+                                    style="width:15px; height:15px;">&nbsp;</span>
+                                Low Extracted Average
+                            </li>
+                        </ul>
                         <form id="upload_result_form" action="" method="post">
                             {% csrf_token %}
                             <div id="dynamic-forms" class="row row-cols-1 row-cols-md-12 g-4">
@@ -227,7 +249,7 @@
                                 if (res.extracted_fields && !$.isEmptyObject(res.extracted_fields)) {
                                     $.each(res.extracted_fields, function (field, value) {
                                         $("#field_container").append(`
-                <div class="mb-1 row align-items-center field-item">
+                <div class="mb-1 row align-items-center field">
                     <label class="col-auto col-form-label">${field}</label>
                     <div class="col">
                         <input type="text" 

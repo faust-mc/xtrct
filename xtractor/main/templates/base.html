@@ -45,10 +45,13 @@
                 <ul class="dropdown-menu text-small shadow" aria-labelledby="dropdownNavLink">
                     <li><a class="dropdown-item {% if request.resolver_match.url_name == 'index' %}active{% endif %}"
                             href="{% url 'main:index' %}">Home</a></li>
+                    <li><a class="dropdown-item {% if request.resolver_match.url_name == 'text_extractor' %}active{% endif %}"
+                            href="{% url 'main:extractor' %}">OCR</a></li>
+                    <li><a class="dropdown-item {% if request.resolver_match.url_name == 'template_config' %}active{% endif %}"
+                            href="{% url 'main:template_list' %}">Template List</a></li>
                     <li><a class="dropdown-item {% if request.resolver_match.url_name == 'template_config' %}active{% endif %}"
                             href="{% url 'main:template_config' %}">Template Configuration</a></li>
-                    <li><a class="dropdown-item {% if request.resolver_match.url_name == 'text_extractor' %}active{% endif %}"
-                            href="{% url 'main:extractor' %}">Text Extractor</a></li>
+
                     <li><a class="dropdown-item {% if request.resolver_match.url_name == 'extracted_files' %}active{% endif %}"
                             href="">Extracted Files</a></li>
                 </ul>

@@ -10,7 +10,7 @@ app_name = 'main'
 urlpatterns = [
     #LOGIN
     path("", CustomLoginView.as_view(), name="login"),
-    #path("login/", login, name="login"),
+    path("login/", CustomLoginView.as_view(), name="login"),
     path("index/", index, name="index"),
     
     path("template_list/", template_list, name="template_list"),
