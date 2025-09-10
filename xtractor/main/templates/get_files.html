@@ -79,73 +79,35 @@
 </style>
 {% endblock %}
 {% block content %}
-<div class="container mt-4">
-
-  <!-- 🔍 Filter Form -->
-  <div class="row mb-3">
-    <div class="col-md-3">
-      <input type="text" id="formName" class="form-control" placeholder="Form name">
-    </div>
-    <div class="col-md-3">
-      <input type="date" id="startDate" class="form-control">
-    </div>
-    <div class="col-md-3">
-      <input type="date" id="endDate" class="form-control">
-    </div>
-    <div class="col-md-3">
-      <button class="btn btn-primary w-100" onclick="loadData(1)">Filter</button>
-    </div>
-  </div>
-
-  <!-- Cards -->
-  <div class="row" id="preview-container"></div>
-
-  <!-- Pagination -->
-  <div class="d-flex justify-content-center mt-3">
-    <nav>
-      <ul class="pagination" id="pagination"></ul>
-    </nav>
-  </div>
-
-
-  <!-- Modal -->
-  <div class="modal fade" id="staticPreview" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
-    aria-labelledby="staticPreviewLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="staticPreviewLabel">Preview</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <form id="upload_result_form" action="" method="post">
-            {% csrf_token %}
-            <div id="dynamic-forms" class="row row-cols-1 row-cols-md-12 g-4">
-              <div class="col">
-                <label for="Field List" class="form-label">
-                  <strong>Extracted Fields</strong>
-                </label>
-                <div id="field_container"></div>
-              </div>
-
-              <div class="col">
-                <label class="form-label">
-                  <strong>Extracted Tables</strong>
-                </label>
-                <div id="table_container"></div>
-              </div>
-            </div>
-          </form>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-          <button type="button" id="save_extracted" class="btn btn-primary">Save</button>
-        </div>
+<div class="container-fluid mb-4">
+  <div class="px-5 rounded">
+    <!-- 🔍 Filter Form -->
+    <div class="row mb-3">
+      <div class="col-md-3">
+        <input type="text" id="formName" class="form-control" placeholder="Form name">
       </div>
+      <div class="col-md-3">
+        <input type="date" id="startDate" class="form-control">
+      </div>
+      <div class="col-md-3">
+        <input type="date" id="endDate" class="form-control">
+      </div>
+      <div class="col-md-3">
+        <button class="btn btn-primary w-100" onclick="loadData(1)">Filter</button>
+      </div>
+    </div>
+
+    <!-- Cards -->
+    <div class="row" id="preview-container"></div>
+
+    <!-- Pagination -->
+    <div class="d-flex justify-content-center mt-3">
+      <nav>
+        <ul class="pagination" id="pagination"></ul>
+      </nav>
     </div>
   </div>
 </div>
-
 <script>
   function renderCards(data) {
     const container = document.getElementById("preview-container");
