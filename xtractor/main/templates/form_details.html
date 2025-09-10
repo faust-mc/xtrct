@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}Template Configuration{% endblock %}
+
+{% block styles %}
+<style>
+  .rotate-icon {
+    transition: transform 0.1s ease-in-out;
+  }
+
+  .rotate-icon.rotate {
+    transform: rotate(90deg);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<h1>Form details</h1>
+{{data}}
+
+{% endblock %}
