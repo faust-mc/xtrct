@@ -42,7 +42,7 @@ function renderCards(data) {
   data.forEach(item => {
     let html = `
       <div class="col-md-4 preview-card">
-        <div class="card shadow-sm mb-4" style="height: 280px; overflow: hidden;">
+        <div class="card shadow-sm mb-4" style="height: 280px; overflow: hidden;" onclick="window.location.href='/form_detail/${item.id}/'">
           <div class="card-header fw-bold">${item.template || "Untitled Form"}</div>
           <div class="card-body" style="font-size: 0.8rem; overflow-y: auto; max-height: 200px;">`;
 
@@ -124,5 +124,8 @@ function loadData(page = 1) {
 
 // Load first page on page load
 document.addEventListener("DOMContentLoaded", () => loadData(1));
+
+
+
 </script>
 {% endblock %}

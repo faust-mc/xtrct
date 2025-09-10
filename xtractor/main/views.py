@@ -951,10 +951,12 @@ def filter_data(request):
 
     results = []
     for extraction in page_obj.object_list:
+        
         extraction_dict = {
             "template": extraction.form_name.name if extraction.form_name else None,
             "extracted_table": [],
-            "extracted_fields": {}
+            "extracted_fields": {},
+            "id": extraction.pk
         }
 
         # Tables
@@ -981,6 +983,14 @@ def filter_data(request):
     }, safe=False, json_dumps_params={"indent": 4})
 
 
+
+@login_required   
+def form_detail(request, pk=None):
+    data = Extraction.objects.get(pk=pk)
+    form_data = {"data":data}
+
+    
+    return render(request, "form_details.html", form_data)
 
 
 
