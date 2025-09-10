@@ -221,10 +221,7 @@
     }
   }
 
-  function renderPreview(data){
-    console.log(data)
-  }
-  
+
   function loadData(page = 1) {
     const formName = document.getElementById("formName").value;
     const startDate = document.getElementById("startDate").value;
@@ -235,7 +232,6 @@
       .then(data => {
         renderCards(data.results);
         renderPagination(data.pagination);
-        renderPreview(data.results);
       });
   }
 
