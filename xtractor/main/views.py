@@ -984,13 +984,32 @@ def filter_data(request):
 
 
 
-@login_required   
+@login_required
 def form_detail(request, pk=None):
-    data = Extraction.objects.get(pk=pk)
-    form_data = {"data":data}
+    try:
+        extraction = Extraction.objects.get(pk=pk)
+    except Extraction.DoesNotExist:
+        return render(request, "404.html", status=404)
 
-    
-    return render(request, "form_details.html", form_data)
+    extraction_dict = {
+        "id": extraction.pk,
+        "template": extraction.form_name.name if extraction.form_name else None,
+        "extracted_table": [],
+        "extracted_fields": {}
+    }
+
+   
+    for table in extraction.tables.all():
+        extraction_dict["extracted_table"].append({
+            table.table_name: table.data
+        })
+
+   
+    for field in extraction.fields.all():
+        for key, value in field.fields.items():
+            extraction_dict["extracted_fields"][key] = value
+
+    return render(request, "form_details.html", {"extraction": extraction_dict})
 
 
 
