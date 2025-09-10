@@ -89,7 +89,7 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                        <ul>
+                        <ul style="margin-left: 0;padding-left: 0;">
                             <li class="d-flex align-items-center">
                                 <span class="badge bg-success rounded-circle me-2"
                                     style="width:15px; height:15px;">&nbsp;</span>
@@ -139,7 +139,7 @@
         </div>
 
         <!-- Upload Button -->
-        <button id="ConvertBtn" class="btn btn-primary" type="button">Convert</button>
+        <button id="ConvertBtn" class="btn btn-primary" type="button">Proceed</button>
     </div>
 </main>
 {% endblock %}
@@ -231,7 +231,7 @@
                     icon: "info",
                     width: 600,
                     showCancelButton: true,
-                    confirmButtonText: "Proceed",
+                    confirmButtonText: "Continue",
                     cancelButtonText: "Cancel",
                     customClass: { popup: 'swal-wide' }
                 }).then((result) => {
