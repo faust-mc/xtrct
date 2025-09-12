@@ -115,17 +115,16 @@
                             {% csrf_token %}
                             <div id="dynamic-forms" class="row row-cols-1 row-cols-md-12 g-4">
                                 <div class="col">
-                                    <label for="Field List" class="form-label">
-                                        <strong>Extracted Fields</strong>
-                                    </label>
-                                    <div id="field_container"></div>
-                                </div>
-
-                                <div class="col">
                                     <label class="form-label">
                                         <strong>Extracted Tables</strong>
                                     </label>
                                     <div id="table_container"></div>
+                                </div>
+                                <div class="col">
+                                    <label for="Field List" class="form-label">
+                                        <strong>Extracted Fields</strong>
+                                    </label>
+                                    <div id="field_container"></div>
                                 </div>
                             </div>
                         </form>
@@ -429,7 +428,7 @@
             tableObj[tableName] = rows;
             result.extracted_table.push(tableObj);
             result['template'] = parseInt($("#template").val());
-            
+
         });
 
         $.ajax({
@@ -441,8 +440,19 @@
             success: function (res) {
                 if (res.success && res.download_url) {
                     window.location.href = res.download_url;
-                    Swal.fire("Success", "Your Excel file has been generated and downloaded.", "success");
-                    $('#staticPreview').modal('hide');
+                    // Download the file first
+                    window.location.href = res.download_url;
+
+                    // Show success alert and then redirect
+                    Swal.fire({
+                        icon: "success",
+                        title: "Success",
+                        text: "Your Excel file has been generated and downloaded.",
+                        confirmButtonText: "OK"
+                    }).then(() => {
+                        window.location.href = "{% url 'main:get_files' %}";
+                    });
+
                 } else {
                     Swal.fire("Error", "Could not generate Excel.", "error");
                 }

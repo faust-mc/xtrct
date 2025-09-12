@@ -916,7 +916,9 @@ def download_excel(request, filename):
 
 
 def get_files(request):
-    return render(request, 'get_files.html')
+    forms = FormName.objects.filter(status=1)
+   
+    return render(request, 'get_files.html', {"forms": forms})
 
 
 

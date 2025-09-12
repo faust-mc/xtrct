@@ -84,7 +84,15 @@
     <!-- 🔍 Filter Form -->
     <div class="row mb-3">
       <div class="col-md-3">
-        <input type="text" id="formName" class="form-control" placeholder="Form name">
+        <div class="form-floating">
+          <select class="form-select" id="formName" name="formName" required>
+            <option value="" selected>-- Choose type --</option>
+            {% for f in forms %}
+            <option value="{{ f.name }}">{{ f.name }}</option>
+            {% endfor %}
+          </select>
+          <label for="template">Select Template</label>
+        </div>
       </div>
       <div class="col-md-3">
         <input type="date" id="startDate" class="form-control">
@@ -112,6 +120,16 @@
   function renderCards(data) {
     const container = document.getElementById("preview-container");
     container.innerHTML = "";
+
+    if (!data || data.length === 0) {
+      container.innerHTML = `
+      <div class="col-12 text-center text-muted my-4">
+        <i class="fas fa-database fa-2x mb-2"></i>
+        <p class="mb-0">No data found</p>
+      </div>
+    `;
+      return;
+    }
 
     data.forEach(item => {
       let html = `
