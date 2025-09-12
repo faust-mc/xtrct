@@ -3,6 +3,7 @@ from random import choices
 from django.utils.timezone import now
 from django.db import models
 from django.contrib.auth.models import User
+import json
 
 
 # class Type(models.Model):
@@ -99,18 +100,51 @@ class Extraction(models.Model):
         return f"Extraction {self.id} ({self.source})"
 
 
+
+
+
 class ExtractedFields(models.Model):
-    extraction = models.ForeignKey(Extraction, on_delete=models.CASCADE, related_name="fields")
-    fields = models.JSONField()
+    extraction = models.ForeignKey(
+        "Extraction", on_delete=models.CASCADE, related_name="fields"
+    )
+    fields_raw = models.TextField()  # store raw JSON string
+
+    @property
+    def fields(self):
+        """Return JSON as Python dict."""
+        try:
+            return json.loads(self.fields_raw)
+        except (TypeError, ValueError):
+            return {}
+
+    @fields.setter
+    def fields(self, value):
+        """Save Python dict as JSON string."""
+        self.fields_raw = json.dumps(value)
 
     def __str__(self):
         return f"Fields for Extraction {self.extraction_id}"
 
 
 class ExtractedTable(models.Model):
-    extraction = models.ForeignKey(Extraction, on_delete=models.CASCADE, related_name="tables")
+    extraction = models.ForeignKey(
+        "Extraction", on_delete=models.CASCADE, related_name="tables"
+    )
     table_name = models.CharField(max_length=255)
-    data = models.JSONField()  # array of dicts (rows)
+    data_raw = models.TextField()  # store raw JSON string
+
+    @property
+    def data(self):
+        """Return JSON as Python list of dicts."""
+        try:
+            return json.loads(self.data_raw)
+        except (TypeError, ValueError):
+            return []
+
+    @data.setter
+    def data(self, value):
+        """Save Python list/dict as JSON string."""
+        self.data_raw = json.dumps(value)
 
     def __str__(self):
         return f"Table: {self.table_name} (Extraction {self.extraction_id})"
