@@ -665,7 +665,7 @@ def ocr_result_view(request):
     )
   
     for t in table_name:
-        table = FormObject.objects.get(title=t)
+        table = FormObject.objects.get(form_name=form_name,title=t)
         reject_anchor_y = None
 
         for line in lines:
@@ -953,7 +953,7 @@ def filter_data(request):
 
     results = []
     for extraction in page_obj.object_list:
-        
+       
         extraction_dict = {
             "template": extraction.form_name.name if extraction.form_name else None,
             "extracted_table": [],
@@ -969,6 +969,7 @@ def filter_data(request):
 
         # Fields
         for field in extraction.fields.all():
+            
             for key, value in field.fields.items():
                 extraction_dict["extracted_fields"][key] = value
 
