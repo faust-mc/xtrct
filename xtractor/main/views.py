@@ -31,6 +31,12 @@ from django.contrib.auth.decorators import permission_required
 def custom_permission_denied_view(request, exception=None):
     return render(request, "403.html", status=403)
 
+def custom_not_found_error_view(request, exception=None):
+    return render(request, "404.html", status=404)
+
+def custom_internal_server_error_view(request, exception=None):
+    return render(request, "500.html", status=500)
+
 class CustomLoginView(LoginView):
     template_name = "login.html"
 
