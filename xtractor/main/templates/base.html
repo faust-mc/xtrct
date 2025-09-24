@@ -64,6 +64,7 @@
                     <img src="https://github.com/mdo.png" alt="User" width="32" height="32" class="rounded-circle">
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end text-small shadow" aria-labelledby="dropdownUser2">
+                     <li><span class="dropdown-item">{{request.user.first_name}}</span></li>
                     <li><a class="dropdown-item" href="{% url 'main:change_password' %}">Change Password</a></li>
                     <li><a class="dropdown-item" href="{% url 'main:logout_request' %}">Sign out</a></li>
                 </ul>

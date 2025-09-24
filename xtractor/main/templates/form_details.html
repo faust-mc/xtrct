@@ -11,91 +11,130 @@
   .rotate-icon.rotate {
     transform: rotate(90deg);
   }
+
+  /* Editable cell style */
+  .editable {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+  .editable:hover {
+    background-color: #fff3cd;
+  }
+  .editable[contenteditable="true"] {
+    background-color: #fff8e1 !important;
+    outline: 1px dashed #f0ad4e;
+  }
+
+  /* Card styling */
+  .card {
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  }
+  .card-header {
+    font-weight: 600;
+    background: #f8f9fa;
+  }
+
+  /* Scrollable tables */
+  .table-responsive {
+    max-height: 400px;
+    overflow-y: auto;
+  }
 </style>
 {% endblock %}
 
 {% block content %}
 <main class="container-fluid mb-4">
-  <div class="px-5 rounded">
+  <div class="px-3">
     <div class="d-flex align-items-center justify-content-between mb-3">
-      <h2>Form Details</h2>
-      <!-- <div class="form-check form-switch ms-3">
-        <input class="form-check-input" type="checkbox" id="yesNoSwitch" name="yes_no" value="yes">
-        <label class="form-check-label ms-2" for="yesNoSwitch">Edit Mode</label>
-      </div> -->
+      <h2 class="mb-0">Form Details</h2>
     </div>
     <hr>
-    <form id="upload_result_form" action="" method="post">
+
+    <form id="upload_result_form" method="post">
       {% csrf_token %}
-      <div id="dynamic-forms" class="row row-cols-1 row-cols-md-12 g-4">
-        <div class="col">
-          <label class="form-label">
-            <strong>Extracted Tables</strong>
-          </label>
+
+      <!-- Extracted Tables -->
+      <div class="card mb-4">
+        <div class="card-header">
+          Extracted Tables
+        </div>
+        <div class="card-body">
           <div id="table_container">
             {% if extraction.extracted_table and extraction.extracted_table|length > 0 %}
-            {% for tableObj in extraction.extracted_table %}
-            {% for tableName, rows in tableObj.items %}
-            {% if rows %}
-            <div class="mb-3">
-              <h5>{{ tableName }}</h5>
-              <table class="table table-bordered table-sm">
-                <thead class="table-light">
-                  <tr>
-                    {% for header in rows.0.keys %}
-                    {% if header|lower != "na" and header|lower != "n/a" %}
-                    <th>{{ header }}</th>
-                    {% else %}
-                    <th></th>
-                    {% endif %}
-                    {% endfor %}
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for row in rows %}
-                  <tr>
-                    {% for header, value in row.items %}
-                    <td class="editable" data-table="{{ tableName }}" data-row="{{ forloop.parentloop.counter0 }}"
-                      data-col="{{ header }}" data-original="{{ value }}">
-                      {{ value }}
-                    </td>
-                    {% endfor %}
-                  </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
-            </div>
-            {% endif %}
-            {% endfor %}
-            {% endfor %}
-            {% endif %}
-          </div>
-
-          <div class="col">
-            <label for="Field List" class="form-label">
-              <strong>Extracted Fields</strong>
-            </label>
-            <div id="field_container">
-              {% for field, value in extraction.extracted_fields.items %}
-              <div class="mb-1 row align-items-center field-item">
-                <label class="col-auto col-form-label">{{ field }}</label>
-                <div class="col">
-                  <input type="text" class="form-control form-control-sm field-input" name="fields[{{ field }}]"
-                    value="{{ value }}" data-field="{{ field }}">
-                </div>
-              </div>
+              {% for tableObj in extraction.extracted_table %}
+                {% for tableName, rows in tableObj.items %}
+                  {% if rows %}
+                    <div class="mb-4">
+                      <h6 class="fw-bold mb-2">{{ tableName }}</h6>
+                      <div class="table-responsive">
+                        <table class="table table-bordered table-sm align-middle">
+                          <thead class="table-light">
+                            <tr>
+                              {% for header in rows.0.keys %}
+                                {% if header|lower != "na" and header|lower != "n/a" %}
+                                  <th>{{ header }}</th>
+                                {% else %}
+                                  <th></th>
+                                {% endif %}
+                              {% endfor %}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {% for row in rows %}
+                              <tr>
+                                {% for header, value in row.items %}
+                                  <td class="editable" 
+                                      data-table="{{ tableName }}" 
+                                      data-row="{{ forloop.parentloop.counter0 }}" 
+                                      data-col="{{ header }}" 
+                                      data-original="{{ value }}">
+                                    {{ value }}
+                                  </td>
+                                {% endfor %}
+                              </tr>
+                            {% endfor %}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  {% endif %}
+                {% endfor %}
               {% endfor %}
-            </div>
+            {% else %}
+              <p class="text-muted">No extracted tables available.</p>
+            {% endif %}
           </div>
         </div>
+      </div>
+
+      <!-- Extracted Fields -->
+      <div class="card">
+        <div class="card-header">
+          Extracted Fields
+        </div>
+        <div class="card-body">
+          <div id="field_container">
+            {% for field, value in extraction.extracted_fields.items %}
+              <div class="mb-2 row align-items-center">
+                <label class="col-sm-4 col-form-label fw-medium">{{ field }}</label>
+                <div class="col-sm-8">
+                  <input type="text" 
+                         class="form-control form-control-sm" 
+                         name="fields[{{ field }}]" 
+                         value="{{ value }}" 
+                         data-field="{{ field }}">
+                </div>
+              </div>
+            {% empty %}
+              <p class="text-muted">No extracted fields available.</p>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
     </form>
   </div>
 </main>
-
-
-<!-- {{extraction.template}}-->
-<!-- {{extraction.extracted_table}} -->
-<!-- {{extraction.extracted_fields}} -->
 {% endblock %}
 
 {% block scripts %}
@@ -104,23 +143,19 @@
     function toggleEditMode() {
       const isChecked = $("#yesNoSwitch").is(":checked");
 
-      // Toggle inputs, selects, textareas, buttons
-      $("#config_form").find("input, select, textarea, button").not("#yesNoSwitch").prop("disabled", !isChecked);
+      $("#config_form").find("input, select, textarea, button")
+        .not("#yesNoSwitch")
+        .prop("disabled", !isChecked);
 
-      // Toggle table cells editability
       if (isChecked) {
-        $(".editable").attr("contenteditable", "true").addClass("table-warning");
+        $(".editable").attr("contenteditable", "true");
       } else {
-        $(".editable").removeAttr("contenteditable").removeClass("table-warning");
+        $(".editable").removeAttr("contenteditable");
       }
     }
 
-    // Run on page load
     toggleEditMode();
-
-    // Toggle on switch change
     $("#yesNoSwitch").on("change", toggleEditMode);
   });
-
 </script>
 {% endblock %}

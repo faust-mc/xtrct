@@ -9,6 +9,8 @@ app_name = 'main'
 
 
 handler403 = "main.views.custom_permission_denied_view"
+handler404 = "main.views.custom_not_found_error_view"
+handler500 = "main.views.custom_internal_server_error_view"
 
 urlpatterns = [
     #LOGIN
