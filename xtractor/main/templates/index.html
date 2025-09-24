@@ -49,10 +49,12 @@
 
 <main class="container py-4">
     <div class="row row-cols-1 row-cols-md-4 g-4">
+
         <!-- Text Extractor -->
+        {% if perms.main.access_extractor_page %}
         <div class="col">
             <a href="{% url 'main:extractor' %}"
-                class="card card-icon-top-right card-hover h-100 card-link text-decoration-none">
+               class="card card-icon-top-right card-hover h-100 card-link text-decoration-none">
                 <i class="fas fa-file-alt fa-icon text-success"></i>
                 <div class="card-body d-flex flex-column">
                     <h5 class="card-title">OCR</h5>
@@ -61,10 +63,13 @@
                 </div>
             </a>
         </div>
+        {% endif %}
+
         <!-- Template List -->
+        {% if perms.main.access_template_list_page %}
         <div class="col">
             <a href="{% url 'main:template_list' %}"
-                class="card card-icon-top-right card-hover h-100 card-link text-decoration-none">
+               class="card card-icon-top-right card-hover h-100 card-link text-decoration-none">
                 <i class="fas fa-list fa-icon text-info"></i>
                 <div class="card-body d-flex flex-column">
                     <h5 class="card-title">Template List</h5>
@@ -73,10 +78,13 @@
                 </div>
             </a>
         </div>
+        {% endif %}
+
         <!-- Template Configuration -->
+        {% if perms.main.access_template_config_page %}
         <div class="col">
             <a href="{% url 'main:template_config' %}"
-                class="card card-icon-top-right card-hover h-100 card-link text-decoration-none">
+               class="card card-icon-top-right card-hover h-100 card-link text-decoration-none">
                 <i class="fas fa-cogs fa-icon text-primary"></i>
                 <div class="card-body d-flex flex-column">
                     <h5 class="card-title">Template Configuration</h5>
@@ -85,9 +93,13 @@
                 </div>
             </a>
         </div>
+        {% endif %}
+
         <!-- Extracted Files -->
+        {% if perms.main.access_get_files_page %}
         <div class="col">
-            <a href="{% url 'main:get_files' %}" class="card card-icon-top-right card-hover h-100 card-link text-decoration-none">
+            <a href="{% url 'main:get_files' %}"
+               class="card card-icon-top-right card-hover h-100 card-link text-decoration-none">
                 <i class="fas fa-folder-open fa-icon text-warning"></i>
                 <div class="card-body d-flex flex-column">
                     <h5 class="card-title">Extracted Files</h5>
@@ -96,8 +108,11 @@
                 </div>
             </a>
         </div>
+        {% endif %}
+
     </div>
 </main>
+
 
 
 {% endblock %}

@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>403 Forbidden</title>
+  <style>
+    :root{
+      --bg: #f9fafb;
+      --muted: #333;
+      --accent: #1976d2;
+      --chicken-body: #fff3d6;
+      --chicken-wattle: #ff725e;
+      --chicken-beak: #ffb74d;
+      --chicken-outline: #e0cfa9;
+      --shadow: rgba(0,0,0,0.06);
+    }
+
+    /* page */
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: Arial, Helvetica, sans-serif;
+      background:var(--bg);
+      color:var(--muted);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+      box-sizing:border-box;
+    }
+
+    .container{
+      text-align:center;
+      max-width:480px;
+      width:100%;
+      padding:28px;
+      border-radius:10px;
+    }
+
+    h1{
+      margin: 12px 0 6px;
+      font-size:40px;
+      color:#d32f2f;
+      letter-spacing:1px;
+    }
+    p{ margin:0 0 18px; color:#444 }
+
+    a.button{
+      display:inline-block;
+      padding:10px 16px;
+      text-decoration:none;
+      background:var(--accent);
+      color:white;
+      border-radius:8px;
+      font-weight:600;
+    }
+    a.button:hover{opacity:.95}
+
+    .cluck-text{
+      margin-bottom:12px;
+      font-weight:700;
+      color:#e65100;
+      animation: pulse 1.2s infinite;
+    }
+    @keyframes pulse{
+      0%,100%{opacity:1}
+      50%{opacity:.3}
+    }
+
+    /* Chicken stage */
+    .chicken-stage{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      margin:0 auto 10px;
+      width:200px;
+      height:160px;
+      position:relative;
+    }
+
+    /* shadow */
+    .chicken-stage::after{
+      content:"";
+      position:absolute;
+      bottom:6px;
+      left:50%;
+      transform:translateX(-50%);
+      width:120px;
+      height:18px;
+      background:var(--shadow);
+      border-radius:50%;
+      filter:blur(6px);
+      opacity:.8;
+    }
+
+    /* chicken base */
+    .chicken{
+      position:relative;
+      width:150px;
+      height:110px;
+      display:block;
+    }
+
+    /* body */
+    .chicken .body{
+      position:absolute;
+      left:10px;
+      top:28px;
+      width:95px;
+      height:70px;
+      background:var(--chicken-body);
+      border-radius:60px 60px 50px 50px;
+      border:6px solid var(--chicken-outline);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.06);
+    }
+
+    /* tail */
+    .chicken .tail{
+      position:absolute;
+      left:88px;
+      top:18px;
+      width:52px;
+      height:40px;
+      transform-origin: left center;
+      /* layered feathers */
+    }
+    .chicken .tail .f{
+      position:absolute;
+      right:0;
+      bottom:0;
+      width:34px;
+      height:22px;
+      border-radius:20px 6px 6px 20px;
+      background:linear-gradient(180deg,#fff8e6,#ffefcf);
+      border:4px solid var(--chicken-outline);
+      transform-origin:right bottom;
+    }
+    .chicken .tail .f.f1{ transform: rotate(-12deg); right:6px; bottom:10px;}
+    .chicken .tail .f.f2{ transform: rotate(-30deg); right:18px; bottom:6px; width:28px; height:18px; opacity:.95}
+    .chicken .tail .f.f3{ transform: rotate(4deg); right:2px; bottom:0; width:26px; height:16px; opacity:.9}
+
+    /* head */
+    .chicken .head{
+      position:absolute;
+      left:-8px;
+      top:-8px;
+      width:60px;
+      height:60px;
+      background:var(--chicken-body);
+      border-radius:50%;
+      border:6px solid var(--chicken-outline);
+      transform-origin: 40% 60%;
+      animation: headCluck 1s infinite ease-in-out;
+      z-index:3;
+    }
+
+    /* comb (top red thing) */
+    .chicken .comb{
+      position:absolute;
+      left:10px;
+      top:-6px;
+      display:flex;
+      gap:2px;
+    }
+    .chicken .comb .c{
+      width:10px;
+      height:12px;
+      background:var(--chicken-wattle);
+      border-radius:6px 6px 2px 2px;
+      transform-origin:center bottom;
+    }
+
+    /* eye */
+/* eyes */
+.chicken .eye {
+  position: absolute;
+  top: 22px;
+  width: 10px;
+  height: 10px;
+  background: #000;
+  border-radius: 50%;
+  animation: blink 4s infinite;
+  transform-origin: center;
+}
+
+.chicken .eye.left { left: 16px; }
+.chicken .eye.right { left: 36px; }
+
+/* blink animation */
+@keyframes blink {
+  0%, 90%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.1); }
+}
+
+
+
+    /* beak */
+    .chicken .beak{
+      position:absolute;
+      left:30px;
+      top:30px;
+      width:0;
+      height:0;
+      border-left:8px solid transparent;
+      border-right:8px solid transparent;
+      border-top:12px solid var(--chicken-beak);
+      transform: rotate(180deg);
+      z-index:4;
+    }
+
+    /* wattle (under beak) */
+    .chicken .wattle{
+      position:absolute;
+      left:30px;
+      top:40px;
+      width:12px;
+      height:10px;
+      background:var(--chicken-wattle);
+      border-radius:8px;
+      transform: translateY(0);
+      z-index:2;
+    }
+
+    /* wing */
+    .chicken .wing{
+      position:absolute;
+      left:30px;
+      top:48px;
+      width:48px;
+      height:32px;
+      background:linear-gradient(180deg,#fff8e6,#ffefcf);
+      border:5px solid var(--chicken-outline);
+      border-radius:50%;
+      transform-origin: 22px 16px;
+      z-index:2;
+      animation: flap 1.2s infinite ease-in-out;
+    }
+
+    /* feet */
+    .chicken .feet{
+      position:absolute;
+      left:24px;
+      top:92px;
+      width:60px;
+      height:22px;
+      display:flex;
+      gap:18px;
+      justify-content:center;
+      z-index:1;
+    }
+    .chicken .feet .foot{
+      width:8px;
+      height:18px;
+      background:#ffb74d;
+      border-radius:4px;
+      position:relative;
+      transform-origin:center top;
+    }
+    .chicken .feet .foot::after{
+      content:"";
+      position:absolute;
+      left:-6px;
+      bottom:-6px;
+      width:20px;
+      height:6px;
+      background:#ffb74d;
+      border-radius:8px;
+      transform:rotate(-12deg);
+    }
+
+    /* animations */
+    @keyframes headCluck{
+      0% { transform: rotate(0deg) translateY(0); }
+      30% { transform: rotate(-8deg) translateY(-6px); }
+      60% { transform: rotate(6deg) translateY(0); }
+      100% { transform: rotate(0deg) translateY(0); }
+    }
+    @keyframes flap{
+      0% { transform: rotate(0deg) translateY(0); }
+      30% { transform: rotate(-18deg) translateY(-2px); }
+      60% { transform: rotate(6deg) translateY(0); }
+      100% { transform: rotate(0deg) translateY(0); }
+    }
+
+    /* responsive smaller sizes */
+    @media (max-width:420px){
+      .chicken-stage{ width:160px; height:130px }
+      .chicken{ width:120px; height:90px }
+      h1{ font-size:34px }
+    }
+
+  </style>
+</head>
+<body>
+  <div class="container" role="main" aria-labelledby="title">
+    <div class="chicken-stage" aria-hidden="true">
+      <div class="chicken" title="Animated chicken">
+        <div class="tail" aria-hidden="true">
+          <div class="f f1"></div>
+          <div class="f f2"></div>
+          <div class="f f3"></div>
+        </div>
+
+        <div class="body"></div>
+
+        <div class="head" >
+          <div class="comb">
+            <div class="c"></div>
+            <div class="c"></div>
+            <div class="c"></div>
+          </div>
+         <div class="eye left"></div>
+<div class="eye right"></div>
+
+
+          <div class="beak"></div>
+          <div class="wattle"></div>
+        </div>
+
+        <div class="wing" ></div>
+
+        <div class="feet">
+          <div class="foot"></div>
+          <div class="foot"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cluck-text">Cluck! Cluck!</div>
+    <h1 id="title">403</h1>
+    <p>Sorry — you don’t have permission to access this page.</p>
+    <a class="button" href="/">Go back home</a>
+  </div>
+</body>
+</html>
