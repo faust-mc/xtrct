@@ -24,8 +24,12 @@ from django.shortcuts import render, redirect, get_object_or_404
 from .services.azure_vision import analyze_image
 from .models import  ComponentType, FormObject, HeaderObjects, RowObjects, FieldObject, FormName, Extraction, ExtractedFields, ExtractedTable
 from .forms import TypeForm, FormObjectForm, HeaderObjectsForm, RowObjectsForm, FieldObjectForm, ChangePasswordForm
+from django.core.paginator import Paginator
+from django.contrib.auth.decorators import permission_required
 
 
+def custom_permission_denied_view(request, exception=None):
+    return render(request, "403.html", status=403)
 
 class CustomLoginView(LoginView):
     template_name = "login.html"
@@ -79,10 +83,9 @@ def index(request):
     return render(request, 'index.html')
 
     
-    
+@permission_required('main.access_template_list_page', raise_exception=True)
 @login_required   
 def template_list(request):
-    
     return render(request, 'template_list.html')
 
 
@@ -130,10 +133,11 @@ def load_template_list(request):
     }
     return JsonResponse(response)
 
-    
+
+
+@permission_required('main.access_template_config_page', raise_exception=True)
 @login_required   
 def template_config(request, pk=None):
-    
     return render(request, "config.html")
 
 
@@ -158,7 +162,7 @@ def submit_form_ajax(request):
                 return JsonResponse({"success": False, "error": "form_title is required"}, status=400)
 
             #check if already exist or create
-            form_name, created = FormName.objects.get_or_create(name=form_title)
+            form_name, created = FormName.objects.get_or_create(name=form_title, created_by=request.user)
             if not created:
                 return JsonResponse({"success": False, "error": "Form already exists"}, status=400)
             
@@ -211,7 +215,7 @@ def submit_form_ajax(request):
                 for l in v['labels']:
                     row=RowObjects(form_object=t1, row_name=l)
                     row.save()
-                for h in v['headers']:
+                for h in v.get("headers", []):
                     header = HeaderObjects(form_object=t1, header_name=h, header_type='value')
                     header.save()
 
@@ -234,8 +238,6 @@ def edit_form_ajax(request, pk):
         return JsonResponse({"success": False, "error": "Invalid request method"}, status=405)
 
     try:
-        
-
         with transaction.atomic():
             form_fields = request.POST.getlist('field_list[]')
           
@@ -307,7 +309,7 @@ def edit_form_ajax(request, pk):
                     row = RowObjects(form_object=t1, row_name=l)
                     row.save()
 
-                for h in v['headers']:
+                for h in v.get("headers", []):
                     header = HeaderObjects(form_object=t1, header_name=h, header_type='value')
                     header.save()
 
@@ -336,16 +338,20 @@ def disable_form_ajax(request, pk):
     return JsonResponse({"success": False, "message": "Invalid request method"})
 
 
+
+@permission_required('main.access_extractor_page', raise_exception=True)
 @login_required
 def extractor(request):
-    forms = FormName.objects.filter(status=1)
-   
+    forms = FormName.objects.filter(
+        status=1,
+        allowed_users=request.user
+    )
     return render(request, 'extractor.html', {"forms": forms})
+
 
 
 @login_required
 def submit_form_extractor(request):
-    
     return render(request, 'extractor.html')
 
 
@@ -467,11 +473,6 @@ def upload_form(request):
 
 
 
-
-@login_required   
-def template_config(request, pk=None):
-    
-    return render(request, "config.html")
 
 
 
@@ -832,6 +833,8 @@ def save_form(request):
                 cell.border = thin_border
 
             for field, value in data["extracted_fields"].items():
+                if isinstance(value, dict):
+                    value = json.dumps(value)
                 ws.append([field, value])
                 for col in range(1, 3):
                     cell = ws.cell(row=ws.max_row, column=col)
@@ -914,17 +917,22 @@ def download_excel(request, filename):
         return response
 
 
-
+@permission_required('main.access_get_files_page', raise_exception=True)
 def get_files(request):
-    forms = FormName.objects.filter(status=1)
-   
+    forms = FormName.objects.filter(
+        status=1,
+        allowed_users=request.user
+    )
     return render(request, 'get_files.html', {"forms": forms})
 
 
 
-from django.core.paginator import Paginator
+
+from django.contrib.auth.decorators import login_required
+from django.utils.decorators import method_decorator
 
 @csrf_exempt
+@login_required
 def filter_data(request):
     form_name = request.GET.get("form_name", "")
     start_date = request.GET.get("start_date", "")
@@ -932,7 +940,8 @@ def filter_data(request):
     page = int(request.GET.get("page", 1))
     per_page = int(request.GET.get("per_page", 6))  # cards per page
 
-    qs = Extraction.objects.all().order_by("-created_at")
+    # 🔑 Only get extractions uploaded by this user
+    qs = Extraction.objects.filter(uploaded_by=request.user).order_by("-created_at")
 
     # Filter by form_name
     if form_name:
@@ -953,7 +962,6 @@ def filter_data(request):
 
     results = []
     for extraction in page_obj.object_list:
-       
         extraction_dict = {
             "template": extraction.form_name.name if extraction.form_name else None,
             "extracted_table": [],
@@ -969,7 +977,6 @@ def filter_data(request):
 
         # Fields
         for field in extraction.fields.all():
-            
             for key, value in field.fields.items():
                 extraction_dict["extracted_fields"][key] = value
 

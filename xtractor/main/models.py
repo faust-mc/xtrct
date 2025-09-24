@@ -6,34 +6,25 @@ from django.contrib.auth.models import User
 import json
 
 
-# class Type(models.Model):
-#   delivery_code = models.ForeignKey(DeliveryCode, on_delete=models.CASCADE, null=True, blank=True)
-#   by_request_item = models.ForeignKey(ByRequestItems, on_delete=models.CASCADE, null=True, blank=True)
-#   total_weekly_request = models.FloatField(default=0, null=True, blank=True)
-#   first_delivery = models.FloatField(default=0, null=True, blank=True)
-#   second_delivery = models.FloatField(default=0, null=True, blank=True)
-#   third_delivery = models.FloatField(default=0, null=True, blank=True)
-#   fourth_delivery = models.FloatField(default=0, null=True, blank=True)
-#   first_final_delivery = models.FloatField(default=0, null=True, blank=True)
-#   second_final_delivery = models.FloatField(default=0, null=True, blank=True)
-#   third_final_delivery = models.FloatField(default=0, null=True, blank=True)
-#   fourth_final_delivery = models.FloatField(default=0, null=True, blank=True)
-#   first_qty_delivery = models.FloatField(default=0, null=True, blank=True)
-#   second_qty_delivery = models.FloatField(default=0, null=True, blank=True)
-#   third_qty_delivery = models.FloatField(default=0, null=True, blank=True)
-#   fourth_qty_delivery = models.FloatField(default=0, null=True, blank=True)
-#   first_qty_uom = models.CharField(max_length=20, null=True, blank=True)
-#   second_qty_byrequest_uom = models.CharField(max_length=20, null=True, blank=True)
-#   third_qty_byrequest_uom = models.CharField(max_length=20, null=True, blank=True)
-#   fourth_qty_byrequest_uom = models.CharField(max_length=20, null=True, blank=True)
 
+class Pages(models.Model):
+    name = models.CharField(max_length=50)
+
+    class Meta:
+        permissions = [
+            ("access_extractor_page", "Can access Extractor Page"),
+            ("access_template_list_page", "Can access Template List Page"),
+            ("access_template_config_page", "Can access Template Config Page"),
+            ("access_get_files_page", "Can access Extracted Files Page"),
+        ]
 
 
 
 class FormName(models.Model):
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     name = models.CharField(max_length=40, null=True, blank=True)
     status = models.IntegerField(default=1)
-    
+    allowed_users = models.ManyToManyField(User, related_name="forms_allowed", blank=True)
     def __str__(self):
         return self.name
 
