@@ -360,17 +360,33 @@
 
                                                 let colorClass = (k === 0) ? "" : getConfidenceColor(conf);
 
-                                                tableHtml += `
-                                                    <td contenteditable="true" 
-                                                        class="editable ${colorClass}"
-                                                        data-table="${tableName}" 
-                                                        data-row="${j}" 
-                                                        data-col="${header}"
-                                                        data-original="${valText}"
-                                                        data-confidence="${conf}"
-                                                        title="Confidence: ${(conf * 100).toFixed(1)}%">
-                                                        ${valText}
-                                                    </td>`;
+                                              if (k === 0) {
+                                                    // first column → NOT editable
+                                                    tableHtml += `
+                                                        <td contenteditable="false" 
+                                                            class="editable ${colorClass}"
+                                                            data-table="${tableName}" 
+                                                            data-row="${j}" 
+                                                            data-col="${header}"
+                                                            data-original="${valText}"
+                                                            data-confidence="${conf}"
+                                                            title="Confidence: ${(conf * 100).toFixed(1)}%">
+                                                            ${valText}
+                                                        </td>`;
+                                                } else {
+                                                    // other columns → editable
+                                                    tableHtml += `
+                                                        <td contenteditable="true" 
+                                                            class="editable ${colorClass}"
+                                                            data-table="${tableName}" 
+                                                            data-row="${j}" 
+                                                            data-col="${header}"
+                                                            data-original="${valText}"
+                                                            data-confidence="${conf}"
+                                                            title="Confidence: ${(conf * 100).toFixed(1)}%">
+                                                            ${valText}
+                                                        </td>`;
+                                                }
                                             });
                                             tableHtml += `</tr>`;
                                         });

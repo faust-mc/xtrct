@@ -44,17 +44,40 @@
                     Menu
                 </a>
                 <ul class="dropdown-menu text-small shadow" aria-labelledby="dropdownNavLink">
-                    <li><a class="dropdown-item {% if request.resolver_match.url_name == 'index' %}active{% endif %}"
-                            href="{% url 'main:index' %}">Home</a></li>
-                    <li><a class="dropdown-item {% if request.resolver_match.url_name == 'text_extractor' %}active{% endif %}"
-                            href="{% url 'main:extractor' %}">OCR</a></li>
-                    <li><a class="dropdown-item {% if request.resolver_match.url_name == 'template_list' %}active{% endif %}"
-                            href="{% url 'main:template_list' %}">Template List</a></li>
-                    <li><a class="dropdown-item {% if request.resolver_match.url_name == 'template_config' %}active{% endif %}"
-                            href="{% url 'main:template_config' %}">Template Configuration</a></li>
-                    <li><a class="dropdown-item {% if request.resolver_match.url_name == 'extracted_files' %}active{% endif %}"
-                            href="{% url 'main:get_files' %}">Extracted Files</a></li>
+                    <li>
+                        <a class="dropdown-item {% if request.resolver_match.url_name == 'index' %}active{% endif %}"
+                           href="{% url 'main:index' %}">Home</a>
+                    </li>
+
+                    {% if perms.main.access_extractor_page %}
+                    <li>
+                        <a class="dropdown-item {% if request.resolver_match.url_name == 'text_extractor' %}active{% endif %}"
+                           href="{% url 'main:extractor' %}">OCR</a>
+                    </li>
+                    {% endif %}
+
+                    {% if perms.main.access_template_list_page %}
+                    <li>
+                        <a class="dropdown-item {% if request.resolver_match.url_name == 'template_list' %}active{% endif %}"
+                           href="{% url 'main:template_list' %}">Template List</a>
+                    </li>
+                    {% endif %}
+
+                    {% if perms.main.access_template_config_page %}
+                    <li>
+                        <a class="dropdown-item {% if request.resolver_match.url_name == 'template_config' %}active{% endif %}"
+                           href="{% url 'main:template_config' %}">Template Configuration</a>
+                    </li>
+                    {% endif %}
+
+                    {% if perms.main.access_get_files_page %}
+                    <li>
+                        <a class="dropdown-item {% if request.resolver_match.url_name == 'extracted_files' %}active{% endif %}"
+                           href="{% url 'main:get_files' %}">Extracted Files</a>
+                    </li>
+                    {% endif %}
                 </ul>
+
             </div>
 
             <!-- Right: User Avatar Dropdown -->
