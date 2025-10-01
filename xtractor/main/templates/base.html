@@ -89,7 +89,14 @@
                 <ul class="dropdown-menu dropdown-menu-end text-small shadow" aria-labelledby="dropdownUser2">
                      <li><span class="dropdown-item">{{request.user.first_name}}</span></li>
                     <li><a class="dropdown-item" href="{% url 'main:change_password' %}">Change Password</a></li>
-                    <li><a class="dropdown-item" href="{% url 'main:logout_request' %}">Sign out</a></li>
+                    <li>
+                      <a class="dropdown-item" 
+                         href="{% url 'main:logout_request' %}" 
+                         onclick="localStorage.setItem('logout_event', Date.now());">
+                         Logout
+                      </a>
+                    </li>
+
                 </ul>
             </div>
         </div>
@@ -135,6 +142,17 @@
             </div>
         </div>
     </div>
+
+    <script>
+  // Listen for logout events from any tab
+  window.addEventListener("storage", function(e) {
+    if (e.key === "logout_event") {
+      // Redirect this tab to login page
+      window.location.href = "{% url 'main:login_request' %}";
+    }
+  });
+</script>
+
 </body>
 
 </html>
