@@ -28,6 +28,7 @@ from django.core.paginator import Paginator
 from django.contrib.auth.decorators import permission_required
 
 
+
 def custom_permission_denied_view(request, exception=None):
     return render(request, "403.html", status=403)
 
@@ -74,9 +75,6 @@ def change_password(request):
 
 
 
-def login(request):
-    
-    return render(request, 'login.html')
 
 
 def logout_request(request):
@@ -794,7 +792,7 @@ def save_form(request):
         form_template = FormName.objects.get(pk=data['template'])
         print(data)
         # --- Save to DB ---
-        extraction = Extraction.objects.create(source="azure-ocr", form_name= form_template, uploaded_by=request.user)
+        extraction = Extraction.objects.create(form_name= form_template, uploaded_by=request.user)
 
         if data.get("extracted_fields"):
             ExtractedFields.objects.create(
@@ -900,6 +898,8 @@ def save_form(request):
         wb.save(tmp_file.name)
 
         download_url = f"/download_excel/{os.path.basename(tmp_file.name)}"
+        extraction.source = os.path.basename(tmp_file.name)
+        extraction.save()
         return JsonResponse({
             "success": True,
             "download_url": download_url,
@@ -1009,6 +1009,7 @@ def form_detail(request, pk=None):
 
     extraction_dict = {
         "id": extraction.pk,
+        "extraction_source": extraction.source,
         "template": extraction.form_name.name if extraction.form_name else None,
         "extracted_table": [],
         "extracted_fields": {}
