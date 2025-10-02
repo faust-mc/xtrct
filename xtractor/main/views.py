@@ -75,6 +75,8 @@ def change_password(request):
 
 
 
+def login(request):
+    return render(request, 'login.html')
 
 
 def logout_request(request):
