@@ -25,6 +25,7 @@ class FormName(models.Model):
     name = models.CharField(max_length=40, null=True, blank=True)
     status = models.IntegerField(default=1)
     allowed_users = models.ManyToManyField(User, related_name="forms_allowed", blank=True)
+    
     def __str__(self):
         return self.name
 
