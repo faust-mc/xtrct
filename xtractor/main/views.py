@@ -156,7 +156,7 @@ def submit_form_ajax(request):
         with transaction.atomic():
             form_fields = request.POST.getlist('field_list[]')
             form_data = dict(request.POST)
-
+            
 
             #check if there is at least field or table
             if not form_fields and not any(k.startswith("table_form") for k in form_data.keys()):
@@ -198,7 +198,8 @@ def submit_form_ajax(request):
 
                     elif field == "header" and key.endswith("[]"):
                         tables[index].setdefault("headers", []).extend(value)
-
+                    elif field == "header_width" and key.endswith("[]"):
+                        tables[index].setdefault("header_width", []).extend(value)
                     else:
                         tables[index][field] = value[0] if len(value) == 1 else value
 
@@ -210,20 +211,57 @@ def submit_form_ajax(request):
                 t1 = FormObject(form_name=form_name, type=component_table, title=v['table_title'])
                 t1.save()
 
+                # Label header first
                 if v['label_header'].strip() != '':
-                    header_label = HeaderObjects(form_object=t1, header_name=v['label_header'], header_type='label')
+                    header_label = HeaderObjects(
+                        form_object=t1,
+                        header_name=v['label_header'],
+                        header_type='label'
+                    )
                     header_label.save()
-
                 else:
-                    header_label = HeaderObjects(form_object=t1, header_name="NA", header_type='label')
+                    header_label = HeaderObjects(
+                        form_object=t1,
+                        header_name="NA",
+                        header_type='label'
+                    )
                     header_label.save()
 
-                for l in v['labels']:
-                    row=RowObjects(form_object=t1, row_name=l)
-                    row.save()
-                for h in v.get("headers", []):
-                    header = HeaderObjects(form_object=t1, header_name=h, header_type='value')
+                # Now handle all headers (including widths)
+                headers = v.get("headers", [])
+                header_widths = v.get("header_width", [])
+
+                # Combine the label header + value headers for width alignment
+                all_headers = [v['label_header']] + headers
+
+                for i, h in enumerate(all_headers):
+                    # Skip if already created label header (index 0)
+                    if i == 0:
+                        # Update label header width
+                        if i < len(header_widths):
+                            try:
+                                header_label.header_width = float(header_widths[i])
+                                header_label.save()
+                            except (ValueError, TypeError):
+                                pass
+                        continue
+
+                    # For value headers
+                    width_val = 0.0
+                    if i < len(header_widths):
+                        try:
+                            width_val = float(header_widths[i])
+                        except (ValueError, TypeError):
+                            width_val = 0.0
+
+                    header = HeaderObjects(
+                        form_object=t1,
+                        header_name=h,
+                        header_type='value',
+                        header_width=width_val
+                    )
                     header.save()
+
 
          
             return JsonResponse({
@@ -246,37 +284,35 @@ def edit_form_ajax(request, pk):
     try:
         with transaction.atomic():
             form_fields = request.POST.getlist('field_list[]')
-          
-            
             form_data = dict(request.POST)
-
-            # check if there is at least one field or table
+            
+            # Check if there is at least one field or table
             if not form_fields and not any(k.startswith("table_form") for k in form_data.keys()):
                 return JsonResponse({"success": False, "error": "Please add table or field in the form"}, status=400)
 
-            # fetch the existing form
+            # Fetch the existing form
             try:
                 form_name = FormName.objects.get(pk=pk)
             except FormName.DoesNotExist:
                 return JsonResponse({"success": False, "error": "Form does not exist"}, status=404)
 
-            # update form title if provided
+            # Update form title if provided
             form_title = request.POST.get('form_title')
             if form_title:
                 form_name.name = form_title
                 form_name.save()
 
-            # delete old FormObjects (and cascade their headers/rows)
+            # Delete old FormObjects (and cascade headers/rows)
             FormObject.objects.filter(form_name=form_name).delete()
 
-            # re-save fields
+            # Re-save fields
             if form_fields:
                 component_field = ComponentType.objects.get(type="Field")
                 for ff in form_fields:
                     t1 = FormObject(form_name=form_name, type=component_field, title=ff)
                     t1.save()
 
-            # re-save tables
+            # Re-save tables
             tables = defaultdict(dict)
             pattern = re.compile(r"table_form\[(\d+)\]\[(.+?)\](?:\[\])?$")
 
@@ -291,6 +327,9 @@ def edit_form_ajax(request, pk):
                     elif "header][label" in key and key.endswith("[]"):
                         tables[index].setdefault("labels", []).extend(value)
 
+                    elif field == "header_width" and key.endswith("[]"):
+                        tables[index].setdefault("header_width", []).extend(value)
+
                     elif field == "header" and key.endswith("[]"):
                         tables[index].setdefault("headers", []).extend(value)
 
@@ -304,20 +343,111 @@ def edit_form_ajax(request, pk):
                 t1 = FormObject(form_name=form_name, type=component_table, title=v['table_title'])
                 t1.save()
 
-                if v['label_header'].strip() != '':
-                    header_label = HeaderObjects(form_object=t1, header_name=v['label_header'], header_type='label')
-                    header_label.save()
-                else:
-                    header_label = HeaderObjects(form_object=t1, header_name="NA", header_type='label')
-                    header_label.save()
+                # --- Determine label header name and value headers robustly ---
+                raw_headers = v.get("headers", [])[:]  # may include label as first element or not
+                provided_label_header = (v.get("label_header") or "").strip()
 
-                for l in v['labels']:
+                # We'll decide label_header_name and value_headers (list)
+                if provided_label_header:
+                    # label provided separately
+                    label_header_name = provided_label_header
+                    # if raw_headers repeats the label as first item, drop it
+                    if raw_headers and raw_headers[0].strip() == label_header_name:
+                        value_headers = raw_headers[1:]
+                    else:
+                        value_headers = raw_headers
+                else:
+                    # label not provided separately: infer it from headers if possible
+                    if raw_headers:
+                        label_header_name = raw_headers[0]
+                        value_headers = raw_headers[1:]
+                    else:
+                        label_header_name = "NA"
+                        value_headers = []
+
+                # Create label header (once)
+                header_label = HeaderObjects(
+                    form_object=t1,
+                    header_name=label_header_name,
+                    header_type='label'
+                )
+                header_label.save()
+
+                # --- Map header widths to label + value headers ---
+                header_widths = v.get("header_width", [])  # list of strings (may be empty)
+
+                # Normalize header_widths to floats where possible (keep as strings for length checks)
+                # Decide how widths map:
+                # - If header_widths length >= len(value_headers) + 1 -> assume first width is label, rest correspond to value_headers
+                # - If header_widths length == len(value_headers) -> assume widths correspond only to value headers (no label width)
+                # - Otherwise, fall back to zeros where missing
+                label_width = None
+                value_widths = []
+
+                try:
+                    hw_len = len(header_widths)
+                except Exception:
+                    hw_len = 0
+
+                if hw_len >= (len(value_headers) + 1):
+                    # first width is label
+                    try:
+                        label_width = float(header_widths[0])
+                    except (ValueError, TypeError):
+                        label_width = None
+                    # remaining widths map to value_headers (take exactly as many as value_headers)
+                    for i in range(len(value_headers)):
+                        try:
+                            value_widths.append(float(header_widths[i + 1]))
+                        except (ValueError, TypeError, IndexError):
+                            value_widths.append(0.0)
+                elif hw_len == len(value_headers):
+                    # widths correspond only to value_headers
+                    label_width = None
+                    for i in range(len(value_headers)):
+                        try:
+                            value_widths.append(float(header_widths[i]))
+                        except (ValueError, TypeError, IndexError):
+                            value_widths.append(0.0)
+                elif hw_len > 0 and hw_len < len(value_headers):
+                    # partial widths: assume they correspond to value_headers starting from first; pad with zeros
+                    label_width = None
+                    for i in range(len(value_headers)):
+                        if i < hw_len:
+                            try:
+                                value_widths.append(float(header_widths[i]))
+                            except (ValueError, TypeError):
+                                value_widths.append(0.0)
+                        else:
+                            value_widths.append(0.0)
+                else:
+                    # no widths provided
+                    label_width = None
+                    value_widths = [0.0] * len(value_headers)
+
+                # Save label header width if present
+                if label_width is not None:
+                    try:
+                        header_label.header_width = float(label_width)
+                        header_label.save()
+                    except (ValueError, TypeError):
+                        pass
+
+                # Save value headers with mapped widths
+                for i, h in enumerate(value_headers):
+                    width_val = value_widths[i] if i < len(value_widths) else 0.0
+                    header = HeaderObjects(
+                        form_object=t1,
+                        header_name=h,
+                        header_type='value',
+                        header_width=width_val
+                    )
+                    header.save()
+
+                # Save rows (labels)
+                for l in v.get("labels", []):
                     row = RowObjects(form_object=t1, row_name=l)
                     row.save()
-
-                for h in v.get("headers", []):
-                    header = HeaderObjects(form_object=t1, header_name=h, header_type='value')
-                    header.save()
 
             return JsonResponse({
                 "success": True,
@@ -328,8 +458,6 @@ def edit_form_ajax(request, pk):
         import traceback
         traceback.print_exc()
         return JsonResponse({"success": False, "error": str(e)}, status=500)
-
-
 
 @csrf_exempt
 def disable_form_ajax(request, pk):
@@ -561,26 +689,53 @@ def sample(request):
 
 
    
+def mm_to_px(mm, dpi=300):
+    """Convert millimeters to pixels (assuming 300 DPI scan)."""
+    return mm * dpi / 25.4
 
 
-def is_same_column(header_bbox, cell_bbox):
-    header_xs = [p["x"] for p in header_bbox]
+def expand_bbox_width(bbox, extra_width_mm=0.0, dpi=300):
+    """
+    Expand the bounding box horizontally according to extra_width_mm.
+    Keeps the same vertical range, adjusts left/right boundaries.
+    """
+    xs = [p["x"] for p in bbox]
+    ys = [p["y"] for p in bbox]
+
+    left, right = min(xs), max(xs)
+    top, bottom = min(ys), max(ys)
+
+    if extra_width_mm > 0:
+        extra_px = mm_to_px(extra_width_mm, dpi)
+        left -= extra_px / 2
+        right += extra_px / 2
+
+    # Rebuild adjusted bbox (same shape, new width)
+    return [
+        {"x": left, "y": top},
+        {"x": right, "y": top},
+        {"x": right, "y": bottom},
+        {"x": left, "y": bottom},
+    ]
+
+
+def is_same_column(header_bbox, cell_bbox, header_width_mm=0.0, dpi=300):
+    """
+    Return True if cell_bbox horizontally overlaps with header_bbox
+    (expanded by header_width_mm if provided).
+    """
+    # Adjust the header bbox width only if specified
+    expanded_header_bbox = expand_bbox_width(header_bbox, header_width_mm, dpi)
+
+    header_xs = [p["x"] for p in expanded_header_bbox]
     cell_xs = [p["x"] for p in cell_bbox]
 
-    header_left = min(header_xs)
-    header_right = max(header_xs)
+    header_left, header_right = min(header_xs), max(header_xs)
+    cell_left, cell_right = min(cell_xs), max(cell_xs)
 
-    cell_left = min(cell_xs)
-    cell_right = max(cell_xs)
+    # Return True if they overlap horizontally
+    return not (cell_right < header_left or cell_left > header_right)
 
-    # Overlap condition (any horizontal overlap)
-    overlaps = not (cell_right < header_left or cell_left > header_right)
-
-    # Fully contained condition (cell box entirely inside header box)
-    fully_within = (cell_left >= header_left and cell_right <= header_right)
-
-    # Return True if either overlaps or fully contained
-    return overlaps or fully_within
 
 
 
@@ -756,7 +911,11 @@ def ocr_result_view(request):
                             field_values[col] = {"text": "N/A", "confidence": 0.0}
                             continue
                         header_bbox = header_info["line"]["bbox"]
-                        matches = [l for l in same_row if is_same_column(header_bbox, l["bbox"])]
+                        header_obj = HeaderObjects.objects.filter(form_object=table, header_name=col).first()
+                        header_width = header_obj.header_width if header_obj else 0.0
+
+                        matches = [l for l in same_row if is_same_column(header_bbox, l["bbox"], header_width_mm=header_width)]
+
                         closest = min(matches, key=lambda l: abs(l["center"][0] - col_x), default=None)
                         if closest:
                             field_values[col] = {
@@ -777,7 +936,7 @@ def ocr_result_view(request):
                     break
 
         tables.append({t: reject_table})
-    print(tables)
+    
     return JsonResponse({
         "extracted_table": tables,
         "extracted_fields": extra_totals
@@ -792,7 +951,7 @@ def save_form(request):
     if request.method == "POST":
         data = json.loads(request.body.decode("utf-8"))
         form_template = FormName.objects.get(pk=data['template'])
-        print(data)
+        
         # --- Save to DB ---
         extraction = Extraction.objects.create(form_name= form_template, uploaded_by=request.user)
 
