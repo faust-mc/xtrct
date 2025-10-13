@@ -58,6 +58,7 @@ class HeaderObjects(models.Model):
 
     form_object = models.ForeignKey(FormObject, on_delete=models.CASCADE, related_name="headers")
     header_name = models.CharField(max_length=20, null=True, blank=True)
+    header_width= models.FloatField(default=0.0)
     header_type = models.CharField(
         max_length=10,
         choices=HEADER_TYPE_CHOICES,

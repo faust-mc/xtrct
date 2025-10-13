@@ -4,13 +4,78 @@
 
 {% block styles %}
 <style>
-  .rotate-icon {
-    transition: transform 0.1s ease-in-out;
-  }
+.rotate-icon {
+  transition: transform 0.1s ease-in-out;
+}
+.rotate-icon.rotate {
+  transform: rotate(90deg);
+}
 
-  .rotate-icon.rotate {
-    transform: rotate(90deg);
-  }
+/* Slider visual setup */
+input.form-control,
+input.form-control-sm {
+  text-align: center;
+}
+
+.header-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.header-fill {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  height: calc(100% - 8px);
+  transform: translateY(-50%);
+  left: 50%;
+  width: 0;
+  background: #007bff;
+  border-radius: 6px;
+  transition: width 0.12s linear, left 0.12s linear;
+  pointer-events: none;
+}
+
+.header-input {
+  position: relative;
+  z-index: 2;
+  background: transparent;
+  color: black;
+  border: 1px solid #ced4da;
+  border-radius: 0.375rem;
+  font-weight: bold;
+  text-align: center;
+}
+
+.header-input-container .form-floating > label {
+  z-index: 3;
+}
+
+.header-slider {
+  width: 120px;
+  height: 36px;
+  appearance: none;
+  background: #f8f9fa;
+  border: 1px solid #ced4da;
+  border-radius: 0.375rem;
+  padding: 4px;
+  cursor: pointer;
+  transition: background 0.2s ease-in-out;
+}
+.header-slider:hover {
+  background: #e9ecef;
+}
+.header-slider:active {
+  background: #dee2e6;
+}
+.slider-info {
+  font-size: 12px;
+  color: #333;
+  text-align: center;
+  width: 80px;
+}
 </style>
 {% endblock %}
 
@@ -103,12 +168,18 @@
               <div class="table-container_{{obj.pk}}" data-container-id="{{obj.pk}}">
                 {% for h in obj.headers.all %}
                 {% if h.header_type|lower == 'label' %}
-                <div class="d-flex align-items-center mb-2">
-                  <div class="form-floating me-2">
-                    <input type="text" class="form-control form-control-sm w-auto"
-                      name="table_form[{{obj.pk}}][header][label]" id="table_header{{obj.pk}}" placeholder="Header 1"
-                      value="{{h.header_name}}">
-                    <label for="table_header{{obj.pk}}">Header {{ forloop.counter }}</label>
+                <div class="d-flex align-items-center mb-2 header-item">
+                  <div class="header-input-container form-floating me-2">
+                    <div class="header-fill"></div>
+                          <input type="text" class="form-control form-control-sm header-input w-auto"
+                            id="table_header{{obj.pk}}{{ forloop.counter }}"
+                            name="table_form[{{obj.pk}}][header][]"
+                            placeholder="Header {{ forloop.counter }}"
+                            value="{{h.header_name}}" required>
+                          <label for="table_header{{obj.pk}}{{ forloop.counter }}">Header {{ forloop.counter }}</label>
+                          <input type="range" class="form-range header-slider" min="0" max="5.61" step="0.01" value="{{h.header_width|default:'0'}}">
+                          <input type="hidden" class="header-width" name="table_form[{{obj.pk}}][header_width][]" value="{{h.header_width|default:'0'}}">
+                          <div class="slider-info"><span class="fillValue">Width: {{h.header_width|default:'0'}} cm</span></div>
                   </div>
                   <button type="button" id="add_label_btn" class="add_label_btn btn btn-sm btn-outline-primary me-2"
                     data-table-id="{{obj.pk}}"><i class="fa-solid fa-circle-plus"></i></button>
@@ -137,11 +208,15 @@
                 </div>
                 {% else %}
                 <div class="d-flex align-items-center mb-2 header-item">
-                  <div class="form-floating me-2">
-                    <input type="text" class="form-control form-control-sm w-auto"
+                  <div class="header-input-container form-floating me-2">
+                    <div class="header-fill"></div>
+                    <input type="text" class="form-control form-control-sm header-input w-auto"
                       id="table_header{{obj.pk}}{{ forloop.counter }}" name="table_form[{{obj.pk}}][header][]"
                       placeholder="Header {{ forloop.counter }}" value="{{h.header_name}}" required>
                     <label for="table_form{{obj.pk}}{{ forloop.counter }}">Header {{ forloop.counter }}</label>
+                    <input type="range" class="form-range header-slider" min="0" max="5.61" step="0.01" value="{{h.header_width|default:'0'}}">
+                          <input type="hidden" class="header-width" name="table_form[{{obj.pk}}][header_width][]" value="{{h.header_width|default:'0'}}">
+                          <div class="slider-info"><span class="fillValue">Width: {{h.header_width|default:'0'}} cm</span></div>
                   </div>
                   <button type="button" class="btn btn-sm btn-outline-danger remove-header">
                     <i class="fa-solid fa-trash"></i>
@@ -170,234 +245,276 @@
 
 {% block scripts %}
 <script>
+/* ----- global vars + function (must be defined before handlers) ----- */
+const MAX_CM = 5.61;
+const CM_TO_PX = 37.8;
 
+let tableCount = 0;
+let fieldCount = 0;
+const headerCounters = {};
+const labelCounters = {};
 
-  $(document).ready(function () {
-    function toggleInputs() {
-      const isChecked = $("#yesNoSwitch").is(":checked");
-      $("#config_form").find("input, select, textarea, button").prop("disabled", !isChecked);
+/**
+ * Attach slider fill animation + behavior to header-input-container elements
+ * container can be a parent element (e.g. $("#dynamic-forms")) or a newly created element ($newHeader / $newTable)
+ */
+function attachHeaderSliderEffect(container) {
+  // container might be a jQuery object or a selector string
+  const $container = $(container);
+  $container.find(".header-input-container").each(function () {
+    const $wrap = $(this);
+    let $fill = $wrap.find(".header-fill");
+    const $input = $wrap.find(".header-input");
+    const $slider = $wrap.find(".header-slider");
+    const $header_width = $wrap.find(".header-width");
+    const $cmLabel = $wrap.find(".fillValue");
+
+    // ensure a fill element exists
+    if ($fill.length === 0) {
+      $fill = $('<div class="header-fill"></div>');
+      $wrap.prepend($fill);
     }
 
-    // Run once on page load
-    toggleInputs();
-    // Toggle on switch change
-    $("#yesNoSwitch").on("change", toggleInputs);
+    // guard: slider/input might be missing (shouldn't happen, but safe)
+    if ($slider.length === 0 || $input.length === 0) {
+      return;
+    }
+
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+
+    function getFont() {
+      const cs = window.getComputedStyle($input[0]);
+      return cs.font || `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+    }
+
+    function updateFill() {
+      const cmVal = parseFloat($slider.val()) || 0;
+      const text = ($input.val() || $input.attr("placeholder") || "").trim();
+      const inputInnerWidth = $input.innerWidth();
+
+      ctx.font = getFont();
+      const textWidth = text ? Math.round(ctx.measureText(text).width) : 0;
+
+      const percent = Math.min(1, Math.max(0, cmVal / MAX_CM));
+      const totalWidth = percent * inputInnerWidth;
+      const leftOffset = Math.max(0, Math.round((inputInnerWidth - totalWidth) / 2));
+      const inputLeft = $input.position().left;
+
+      $fill.css({
+        width: totalWidth + "px",
+        left: inputLeft + leftOffset + "px",
+      });
+
+      $input.css("color", totalWidth > textWidth * 1.4 ? "white" : "black");
+      if ($cmLabel.length) $cmLabel.text(`Width: ${cmVal.toFixed(2)} cm`);
+      if ($header_width.length) $header_width.val(cmVal.toFixed(2));
+    }
+
+    // remove previous handlers to avoid duplicates (in case this function is called twice on same element)
+    $slider.off(".headerFill");
+    $input.off(".headerFill");
+
+    updateFill();
+    $slider.on("input.headerFill change.headerFill", updateFill);
+    $input.on("input.headerFill change.headerFill", updateFill);
+
+    // ensure window resize updates
+    $(window).off("resize.headerFillResize").on("resize.headerFillResize", function () {
+      // update all fills inside this container on resize
+      $container.find(".header-input-container").each(function () {
+        const $thisWrap = $(this);
+        // trigger its slider's change to recalc
+        $thisWrap.find(".header-slider").trigger("change");
+      });
+    });
+  });
+}
+
+/* ----- DOM ready: initialize and attach handlers ----- */
+$(function () {
+  // initialize sliders for existing elements
+  attachHeaderSliderEffect($("#dynamic-forms"));
+
+  /* ===== Add Table ===== */
+  $('#add_grid_btn').on('click', function () {
+    tableCount++;
+    const tableForm = `
+    <div class="col table-card">
+      <div class="card bg-light position-relative">
+        <div class="card-body">
+          <button type="button" class="btn btn-sm btn-outline-danger position-absolute top-0 end-0 m-2 remove-card">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+          <div class="row g-3 align-items-center mb-2">
+            <div class="col-12 col-md-6">
+              <label class="form-label"><strong>Table Title</strong></label>
+              <input type="text" class="form-control" name="table_form[${tableCount}][table_title]" required>
+            </div>
+            <div class="col-12 col-md-2">
+              <label class="form-label">Row No.</label>
+              <input type="number" class="form-control" name="table_form[${tableCount}][row_no]" required>
+            </div>
+          </div>
+          <div class="d-inline-flex mb-2">
+            <button id="add_header_btn" type="button" class="add_header_btn btn btn-sm btn-outline-primary" data-table-id="${tableCount}">
+              Column Header <i class="fa-solid fa-circle-plus"></i>
+            </button>
+          </div>
+          <div class="table-container_${tableCount}" data-container-id="${tableCount}">
+            <div class="d-flex align-items-center mb-2 header-item">
+              <div class="header-input-container form-floating me-2">
+                <div class="header-fill"></div>
+                <input type="text" class="form-control form-control-sm header-input w-auto"
+                  name="table_form[${tableCount}][header][label]"
+                  id="table_header${tableCount}"
+                  placeholder="Header 1" value="Header 1">
+                <label for="table_header${tableCount}">Header 1</label>
+                <input type="range" class="form-range header-slider" min="0" max="5.61" step="0.01" value="0">
+                <input type="hidden" class="header-width" name="table_form[${tableCount}][header_width][]" value="0">
+                <div class="slider-info"><span class="fillValue">Width: 0 cm</span></div>
+              </div>
+              <button type="button" id="add_label_btn" class="add_label_btn btn btn-sm btn-outline-primary me-2" data-table-id="${tableCount}">
+                <i class="fa-solid fa-circle-plus"></i>
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-success toggle-arrow"
+                data-bs-toggle="collapse" data-bs-target="#treeHead_${tableCount}" aria-expanded="true" aria-controls="treeHead_${tableCount}">
+                <i class="fas fa-chevron-right rotate-icon rotate"></i>
+              </button>
+            </div>
+            <div class="ps-4 collapse show treeHead_${tableCount}" id="treeHead_${tableCount}"></div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  
+    const $newTable = $(tableForm);
+    $('#dynamic-forms').append($newTable);
+
+    // Attach slider functionality for any header inputs inside the new table
+    attachHeaderSliderEffect($newTable);
   });
 
+  /* ===== Add Header (inside existing or newly created tables) ===== */
+  $(document).on('click', '#add_header_btn', function () {
+    const tableId = $(this).data('table-id');
+    if (!headerCounters[tableId]) headerCounters[tableId] = 2;
+    else headerCounters[tableId]++;
+    const headerCount = headerCounters[tableId];
+    const container = $(`.table-container_${tableId}`);
 
+    const newHeader = `
+      <div class="d-flex align-items-center mb-2 header-item">
+        <div class="header-input-container form-floating me-2">
+          <div class="header-fill"></div>
+          <input type="text" class="form-control form-control-sm header-input w-auto" id="table_header${tableId}${headerCount}"
+            name="table_form[${tableId}][header][]" placeholder="Header ${headerCount}" required>
+          <label for="table_form${tableId}${headerCount}">Header ${headerCount}</label>
+          <input type="range" class="form-range header-slider" min="0" max="5.61" step="0.01" value="0">
+          <input type="hidden" class="header-width" name="table_form[${tableId}][header_width][]" value="0">
+          <div class="slider-info"><span class="fillValue">Width: 0 cm</span></div>
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-danger remove-header">
+          <i class="fa-solid fa-trash"></i>
+        </button>
+      </div>`;
 
-  // Handle icon rotation for collapse toggles dynamically
+    const $newHeader = $(newHeader);
+    container.append($newHeader);
+
+    // Attach slider behavior to the new header only
+    attachHeaderSliderEffect($newHeader);
+  });
+
+  /* ===== Add label (works as before) ===== */
+  $(document).on('click', '#add_label_btn', function () {
+    const tableId = $(this).data('table-id');
+    if (!labelCounters[tableId]) labelCounters[tableId] = 1;
+    else labelCounters[tableId]++;
+    const labelCount = labelCounters[tableId];
+    const container = $(`.treeHead_${tableId}`);
+    const newLabel = `
+      <div class="mb-1 row align-items-center label-item">
+        <label for="header_label${tableId}${labelCount}" class="col-auto col-form-label">Label ${labelCount}</label>
+        <div class="col">
+          <input type="text" class="form-control form-control-sm" name="table_form[${tableId}][header][label][]" id="header_label${tableId}${labelCount}" required>
+        </div>
+        <div class="col-auto">
+          <button type="button" class="btn btn-sm btn-outline-danger remove-label">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </div>
+      </div>`;
+    container.append($(newLabel));
+  });
+
+  /* ===== Add Field ===== */
+  $(document).on('click', '#add_field_btn', function () {
+    fieldCount++;
+    const fieldInput = `
+      <div class="mb-1 row align-items-center field-item">
+        <label class="col-auto col-form-label">Field ${fieldCount}</label>
+        <div class="col">
+          <input type="text" class="form-control form-control-sm" name="field_list[]" required>
+        </div>
+        <div class="col-auto">
+          <button type="button" class="btn btn-sm btn-outline-danger remove-field">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </div>
+      </div>`;
+    $('#field_container').append($(fieldInput));
+  });
+
+  /* ===== Remove handlers (as before) ===== */
+  $(document).on('click', '.remove-field', function () {
+    if (confirm('Are you sure you want to remove this section?')) $(this).closest('.field-item').remove();
+  });
+  $(document).on('click', '.remove-header', function () {
+    if (confirm('Are you sure you want to remove this section?')) $(this).closest('.header-item').remove();
+  });
+  $(document).on('click', '.remove-label', function () {
+    if (confirm('Are you sure you want to remove this section?')) $(this).closest('.label-item').remove();
+  });
+  $(document).on('click', '.remove-card', function () {
+    if (confirm('Are you sure you want to remove this section?')) $(this).closest('.table-card').remove();
+  });
+
+  /* ===== Collapse rotation icon handling ===== */
   $(document).on('click', '[data-bs-toggle="collapse"]', function () {
     const icon = $(this).find('.rotate-icon');
     const targetSelector = $(this).attr('data-bs-target');
     const target = $(targetSelector);
-
-    // Listen for collapse events just for this target
-    target.on('shown.bs.collapse', function () {
-      icon.addClass('rotate');
-    });
-    target.on('hidden.bs.collapse', function () {
-      icon.removeClass('rotate');
-    });
+    target.on('shown.bs.collapse', function () { icon.addClass('rotate'); });
+    target.on('hidden.bs.collapse', function () { icon.removeClass('rotate'); });
   });
 
-
-  let tableCount = 0;
-  let fieldCount = 0;
-  const headerCounters = {}; // Store header counts per table
-  const labelCounters = {}; // Store header counts per table
-
-  $(document).on('click', '#add_header_btn', function () {
-    const tableId = $(this).data('table-id'); // Get table count from data attribute
-
-    // Create unique header index
-    if (!headerCounters[tableId]) {
-      headerCounters[tableId] = 2;
-    } else {
-      headerCounters[tableId]++;
-    }
-
-    const headerCount = headerCounters[tableId];
-
-    const container = $(`.table-container_${tableId}`);
-
-    const newHeader = `
-        <div class="d-flex align-items-center mb-2 header-item">
-            <div class="form-floating me-2">
-                <input type="text" class="form-control form-control-sm w-auto" id="table_header${tableId}${headerCount}"
-                    name="table_form[${tableId}][header][]" placeholder="Header ${headerCount}" required>
-                <label for="table_form${tableId}${headerCount}">Header ${headerCount}</label>
-            </div>
-            <button type="button" class="btn btn-sm btn-outline-danger remove-header">
-                <i class="fa-solid fa-trash"></i>
-            </button>
-        </div>
-    `;
-    container.append(newHeader);
-  });
-
-  $(document).on('click', '#add_label_btn', function () {
-    const tableId = $(this).data('table-id'); // Get table count from data attribute
-
-    // Create unique header index
-    if (!labelCounters[tableId]) {
-      labelCounters[tableId] = 1;
-    } else {
-      labelCounters[tableId]++;
-    }
-
-    const labelCount = labelCounters[tableId];
-
-    const container = $(`.treeHead_${tableId}`);
-
-    const newLabel = `
-        <div class="mb-1 row align-items-center label-item">
-            <label for="header_label${tableId}${labelCount}" class="col-auto col-form-label">Label ${labelCount}</label>
-            <div class="col">
-                <input type="text" class="form-control form-control-sm" name="table_form[${tableId}][header][label][]" id="header_label${tableId}${labelCount}" required>
-            </div>
-            <div class="col-auto">
-                <button type="button" class="btn btn-sm btn-outline-danger remove-label">
-                    <i class="fa-solid fa-trash"></i>
-                </button>
-            </div>
-        </div>
-    `;
-    container.append(newLabel);
-  });
-
-  $(document).on('click', '#add_field_btn', function () {
-    fieldCount++;
-    const fieldInput = `
-           <div class="mb-1 row align-items-center field-item">
-                <label class="col-auto col-form-label">Fieldname</label>
-                <div class="col">
-                    <input type="text" class="form-control form-control-sm" name="field_list[]" required>
-                </div>
-                <div class="col-auto">
-                    <button type="button" class="btn btn-sm btn-outline-danger remove-field">
-                        <i class="fa-solid fa-trash"></i>
-                    </button>
-                </div>
-            </div>
-        `;
-    $('#field_container').append(fieldInput);
-  });
-  // Add Table
-  $('#add_grid_btn').on('click', function () {
-    tableCount++;
-    const tableForm = `
-           <div class="col table-card">
-            <div class="card bg-light position-relative">
-                <div class="card-body">
-                    <button type="button" class="btn btn-sm btn-outline-danger position-absolute top-0 end-0 m-2 remove-card"><i class="fa-solid fa-trash"></i></button>
-                    <div class="row g-3 align-items-center mb-2">
-                        <div class="col-12 col-md-6">
-                            <label for="table_title" class="form-label"><strong>Table Title</strong></label>
-                            <input type="text" class="form-control" id="table_title"
-                                name="table_form[${tableCount}][table_title]" required>
-                        </div>
-                        <div class="col-12 col-md-2">
-                            <label for="row_no" class="form-label">Row No.</label>
-                            <input type="number" class="form-control" id="row_no"
-                                name="table_form[${tableCount}][row_no]" required>
-                        </div>
-                    </div>
-                    <div class="d-inline-flex mb-2">
-                        <button id="add_header_btn" type="button" class="add_header_btn btn btn-sm btn-outline-primary" data-table-id="${tableCount}">Column Header
-                            <i class="fa-solid fa-circle-plus"></i></button>
-                    </div>
-                    <div class="table-container_${tableCount}" data-container-id="${tableCount}">
-                        <div class="d-flex align-items-center mb-2">
-                            <div class="form-floating me-2">
-                                <input type="text" class="form-control form-control-sm w-auto"
-                                    name="table_form[${tableCount}][header][label]" id="table_header${tableCount}"
-                                    placeholder="Header 1">
-                                <label for="table_header${tableCount}">Header 1</label>
-                            </div>
-                            <button type="button" id="add_label_btn" class="add_label_btn btn btn-sm btn-outline-primary me-2" data-table-id="${tableCount}"><i
-                                    class="fa-solid fa-circle-plus"></i></button>
-                            <button type="button" class="btn btn-sm btn-outline-success toggle-arrow"
-                                data-bs-toggle="collapse" data-bs-target="#treeHead_${tableCount}" aria-expanded="true"
-                                aria-controls="treeHead_${tableCount}">
-                                <i class="fas fa-chevron-right rotate-icon rotate"></i>
-                            </button>
-                        </div>
-                        <div class="ps-4 collapse show treeHead_${tableCount}" id="treeHead_${tableCount}">
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        `;
-    $('#dynamic-forms').append(tableForm);
-  });
-
-
-  // Remove Field (event delegation for dynamic items)
-  $(document).on('click', '.remove-field', function () {
-    if (confirm('Are you sure you want to remove this section?')) {
-      $(this).closest('.field-item').remove();
-    }
-  });
-
-  // Remove Header (event delegation for dynamic items)
-  $(document).on('click', '.remove-header', function () {
-    if (confirm('Are you sure you want to remove this section?')) {
-      $(this).closest('.header-item').remove();
-    }
-  });
-
-  // Remove label (event delegation for dynamic items)
-  $(document).on('click', '.remove-label', function () {
-    if (confirm('Are you sure you want to remove this section?')) {
-      $(this).closest('.label-item').remove();
-    }
-  });
-
-  // Remove any card on click of .remove-card
-  $(document).on('click', '.remove-card', function () {
-    const $card = $(this).closest('.table-card');
-    if (confirm('Are you sure you want to remove this section?')) {
-      $card.remove();
-    }
-  });
-
-  // Save action
-  // $('#saveBtn').on('click', function () {
-  //     alert('Saving data... (You can connect this to AJAX or form submission)');
-  // });
-
+  /* ===== Form submit (AJAX) ===== */
   $('#config_form').on('submit', function (event) {
     event.preventDefault();
-
-    var formData = $(this).serialize();
-
+    const formData = $(this).serialize();
     $.ajax({
       url: "{% url 'main:edit_form_ajax' form.pk %}",
-      type: 'POST', //
-      headers: {
-        'X-CSRFToken': $('input[name="csrfmiddlewaretoken"]').val() // Get CSRF token
-      },
+      type: 'POST',
+      headers: { 'X-CSRFToken': $('input[name="csrfmiddlewaretoken"]').val() },
       data: formData,
       success: function (response) {
-        Swal.fire({
-          icon: 'success',
-          title: 'Success',
-          text: 'Form configuration successfully added',
-          showConfirmButton: true
-        }).then((result) => {
-          if (result.isConfirmed) {
-            window.location.href = response.redirect_url;
-          }
-        });
-
+        Swal.fire({ icon: 'success', title: 'Success', text: 'Form configuration successfully added', showConfirmButton: true })
+          .then((result) => { if (result.isConfirmed) window.location.href = response.redirect_url; });
       },
-      error: function (xhr, status, error) {
-        Swal.fire(xhr.responseJSON.error);
-      }
+      error: function (xhr) { Swal.fire(xhr.responseJSON ? xhr.responseJSON.error : 'An error occurred'); }
     });
   });
+
+  /* ===== Edit Mode toggle (disable inputs when off) ===== */
+  function toggleInputs() {
+    const isChecked = $("#yesNoSwitch").is(":checked");
+    // leave the switch itself enabled so the user can toggle it
+    $("#config_form").find("input, select, textarea, button").not("#yesNoSwitch").prop("disabled", !isChecked);
+  }
+  toggleInputs();
+  $("#yesNoSwitch").on("change", toggleInputs);
+});
 </script>
 
 
