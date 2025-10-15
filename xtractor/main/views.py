@@ -148,6 +148,7 @@ def template_config(request, pk=None):
 
 
 
+            
 def submit_form_ajax(request):
     if request.method != 'POST':
         return JsonResponse({"success": False, "error": "Invalid request method"}, status=405)
@@ -156,33 +157,32 @@ def submit_form_ajax(request):
         with transaction.atomic():
             form_fields = request.POST.getlist('field_list[]')
             form_data = dict(request.POST)
-            
 
-            #check if there is at least field or table
+            # check if there is at least field or table
             if not form_fields and not any(k.startswith("table_form") for k in form_data.keys()):
                 return JsonResponse({"success": False, "error": "Please add table or field in the form"}, status=400)
             
-            #get form title
+            # get form title
             form_title = request.POST.get('form_title')
             if not form_title:
                 return JsonResponse({"success": False, "error": "form_title is required"}, status=400)
 
-            #check if already exist or create
+            # check if already exist or create
             form_name, created = FormName.objects.get_or_create(name=form_title, created_by=request.user)
             if not created:
                 return JsonResponse({"success": False, "error": "Form already exists"}, status=400)
             
-            #saving of fields    
+            # saving of fields    
             if form_fields:
                 component_field = ComponentType.objects.get(type="Field")
                 for ff in form_fields:
                     t1 = FormObject(form_name=form_name, type=component_field, title=ff)
                     t1.save()
 
-            #saving of tables
+            # saving of tables
             tables = defaultdict(dict)
 
-            #fixing tables
+            # fixing tables
             pattern = re.compile(r"table_form\[(\d+)\]\[(.+?)\](?:\[\])?$")
 
             for key, value in form_data.items():
@@ -198,13 +198,15 @@ def submit_form_ajax(request):
 
                     elif field == "header" and key.endswith("[]"):
                         tables[index].setdefault("headers", []).extend(value)
+
                     elif field == "header_width" and key.endswith("[]"):
                         tables[index].setdefault("header_width", []).extend(value)
+
                     else:
                         tables[index][field] = value[0] if len(value) == 1 else value
 
             tables = dict(tables)
-            
+
             for k, v in tables.items():
                 component_table = ComponentType.objects.get(type="Table")
 
@@ -213,40 +215,25 @@ def submit_form_ajax(request):
 
                 # Label header first
                 if v['label_header'].strip() != '':
-                    header_label = HeaderObjects(
-                        form_object=t1,
-                        header_name=v['label_header'],
-                        header_type='label'
-                    )
+                    header_label = HeaderObjects(form_object=t1, header_name=v['label_header'], header_type='label')
                     header_label.save()
                 else:
-                    header_label = HeaderObjects(
-                        form_object=t1,
-                        header_name="NA",
-                        header_type='label'
-                    )
+                    header_label = HeaderObjects(form_object=t1, header_name="NA", header_type='label')
                     header_label.save()
 
-                # Now handle all headers (including widths)
+                # Save Row labels
+                for l in v.get('labels', []):
+                    row = RowObjects(form_object=t1, row_name=l)
+                    row.save()
+
+                # Handle headers with widths
                 headers = v.get("headers", [])
                 header_widths = v.get("header_width", [])
 
-                # Combine the label header + value headers for width alignment
+                # combine label header + value headers for width alignment
                 all_headers = [v['label_header']] + headers
 
                 for i, h in enumerate(all_headers):
-                    # Skip if already created label header (index 0)
-                    if i == 0:
-                        # Update label header width
-                        if i < len(header_widths):
-                            try:
-                                header_label.header_width = float(header_widths[i])
-                                header_label.save()
-                            except (ValueError, TypeError):
-                                pass
-                        continue
-
-                    # For value headers
                     width_val = 0.0
                     if i < len(header_widths):
                         try:
@@ -254,25 +241,26 @@ def submit_form_ajax(request):
                         except (ValueError, TypeError):
                             width_val = 0.0
 
-                    header = HeaderObjects(
-                        form_object=t1,
-                        header_name=h,
-                        header_type='value',
-                        header_width=width_val
-                    )
-                    header.save()
+                    if i == 0:
+                        header_label.header_width = width_val
+                        header_label.save()
+                    else:
+                        header = HeaderObjects(
+                            form_object=t1,
+                            header_name=h,
+                            header_type='value',
+                            header_width=width_val
+                        )
+                        header.save()
 
-
-         
             return JsonResponse({
                 "success": True,
                 "redirect_url": reverse("main:template_detail", args=[form_name.pk])
-                
             })
 
     except Exception as e:
         import traceback
-        traceback.print_exc()  # prints full stack trace in console
+        traceback.print_exc()
         return JsonResponse({"success": False, "error": str(e)}, status=500)
 
 
