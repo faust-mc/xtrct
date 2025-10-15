@@ -177,7 +177,7 @@ input.form-control-sm {
                             placeholder="Header {{ forloop.counter }}"
                             value="{{h.header_name}}" required>
                           <label for="table_header{{obj.pk}}{{ forloop.counter }}">Header {{ forloop.counter }}</label>
-                          <input type="range" class="form-range header-slider" min="0" max="5.61" step="0.01" value="{{h.header_width|default:'0'}}">
+                          <input type="range" class="form-range header-slider" min="0" max="12" step="0.01" value="{{h.header_width|default:'0'}}">
                           <input type="hidden" class="header-width" name="table_form[{{obj.pk}}][header_width][]" value="{{h.header_width|default:'0'}}">
                           <div class="slider-info"><span class="fillValue">Width: {{h.header_width|default:'0'}} cm</span></div>
                   </div>
@@ -214,7 +214,7 @@ input.form-control-sm {
                       id="table_header{{obj.pk}}{{ forloop.counter }}" name="table_form[{{obj.pk}}][header][]"
                       placeholder="Header {{ forloop.counter }}" value="{{h.header_name}}" required>
                     <label for="table_form{{obj.pk}}{{ forloop.counter }}">Header {{ forloop.counter }}</label>
-                    <input type="range" class="form-range header-slider" min="0" max="5.61" step="0.01" value="{{h.header_width|default:'0'}}">
+                    <input type="range" class="form-range header-slider" min="0" max="12" step="0.01" value="{{h.header_width|default:'0'}}">
                           <input type="hidden" class="header-width" name="table_form[{{obj.pk}}][header_width][]" value="{{h.header_width|default:'0'}}">
                           <div class="slider-info"><span class="fillValue">Width: {{h.header_width|default:'0'}} cm</span></div>
                   </div>
@@ -246,7 +246,7 @@ input.form-control-sm {
 {% block scripts %}
 <script>
 /* ----- global vars + function (must be defined before handlers) ----- */
-const MAX_CM = 5.61;
+const MAX_CM = 12;
 const CM_TO_PX = 37.8;
 
 let tableCount = 0;
@@ -306,7 +306,7 @@ function attachHeaderSliderEffect(container) {
         left: inputLeft + leftOffset + "px",
       });
 
-      $input.css("color", totalWidth > textWidth * 1.4 ? "white" : "black");
+      
       if ($cmLabel.length) $cmLabel.text(`Width: ${cmVal.toFixed(2)} cm`);
       if ($header_width.length) $header_width.val(cmVal.toFixed(2));
     }
@@ -370,7 +370,7 @@ $(function () {
                   id="table_header${tableCount}"
                   placeholder="Header 1" value="Header 1">
                 <label for="table_header${tableCount}">Header 1</label>
-                <input type="range" class="form-range header-slider" min="0" max="5.61" step="0.01" value="0">
+                <input type="range" class="form-range header-slider" min="0" max="12" step="0.01" value="0">
                 <input type="hidden" class="header-width" name="table_form[${tableCount}][header_width][]" value="0">
                 <div class="slider-info"><span class="fillValue">Width: 0 cm</span></div>
               </div>
@@ -410,7 +410,7 @@ $(function () {
           <input type="text" class="form-control form-control-sm header-input w-auto" id="table_header${tableId}${headerCount}"
             name="table_form[${tableId}][header][]" placeholder="Header ${headerCount}" required>
           <label for="table_form${tableId}${headerCount}">Header ${headerCount}</label>
-          <input type="range" class="form-range header-slider" min="0" max="5.61" step="0.01" value="0">
+          <input type="range" class="form-range header-slider" min="0" max="12" step="0.01" value="0">
           <input type="hidden" class="header-width" name="table_form[${tableId}][header_width][]" value="0">
           <div class="slider-info"><span class="fillValue">Width: 0 cm</span></div>
         </div>

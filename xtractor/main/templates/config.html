@@ -133,7 +133,8 @@ input.form-control-sm {
 {% block scripts %}
 <script>
 $(document).ready(function () {
-  const CM_TO_PX = 96 / 2.54; // ≈37.8 px/cm
+  // const CM_TO_PX = 96 / 2.54; // ≈37.8 px/cm
+  const MAX_CM = 12;
 
   // Slider + fill setup
   function attachHeaderSliderEffect(container) {
@@ -158,35 +159,34 @@ $(document).ready(function () {
       }
 
       function updateFill() {
-  const sliderVal = Number($slider.val() || 0);
-  const text = ($input.val() || $input.attr("placeholder") || "").trim();
-  const inputInnerWidth = $input.innerWidth();
+        const sliderVal = Number($slider.val() || 0);
+        const text = ($input.val() || $input.attr("placeholder") || "").trim();
+        const inputInnerWidth = $input.innerWidth();
 
-  ctx.font = getFont();
-  const textWidth = text ? Math.round(ctx.measureText(text).width) : 0;
+        ctx.font = getFont();
+        const textWidth = text ? Math.round(ctx.measureText(text).width) : 0;
 
-  const percent = sliderVal / Number($slider.attr("max") || 10);
-  const maxExtra = (inputInnerWidth - textWidth) / 2;
-  const extra = percent * maxExtra;
-  const totalWidth = textWidth + 2 * extra;
+        const percent = sliderVal / MAX_CM;
 
-  const leftOffset = Math.max(0, Math.round((inputInnerWidth - totalWidth) / 2));
-  const inputLeft = $input.position().left;
+        const maxExtra = (inputInnerWidth - textWidth) / 2;
+        const extra = percent * maxExtra;
+        const totalWidth = textWidth + 2 * extra;
 
-  $fill.css({
-    width: totalWidth + "px",
-    left: inputLeft + leftOffset + "px",
-  });
+        const leftOffset = Math.max(0, Math.round((inputInnerWidth - totalWidth) / 2));
+        const inputLeft = $input.position().left;
 
-  $input.css("color", totalWidth > textWidth * 1.4 ? "white" : "black");
+        $fill.css({
+          width: totalWidth + "px",
+          left: inputLeft + leftOffset + "px",
+        });
+          const cmValue = parseFloat(sliderVal).toFixed(2);
 
-  const cmValue = sliderVal === 0 ? 0 : (totalWidth / 37.8).toFixed(2);
-  $cmLabel.text(`Width: ${cmValue} cm`);
+          $cmLabel.text(`Width: ${cmValue} cm`);
 
-  // ✅ update hidden field
-  const $hiddenWidth = $wrap.find(".header-width");
-  $hiddenWidth.val(cmValue);
-}
+          // ✅ update hidden field
+          const $hiddenWidth = $wrap.find(".header-width");
+          $hiddenWidth.val(cmValue);
+        }
 
 
       // bind
@@ -234,7 +234,9 @@ $(document).ready(function () {
       name="table_form[${tableId}][header][]"
       placeholder="Header ${headerCount}" value="Header ${headerCount}" required>
     <label for="table_header${tableId}${headerCount}">Header ${headerCount}</label>
-    <input type="range" class="form-range header-slider" min="0" max="10" step="1" value="0">
+    <input type="range" class="form-range header-slider" min="0" max="12" step="0.01" value="0">
+
+
         <input type="hidden" class="header-width" name="table_form[${tableId}][header_width][]" value="0">
 
     <div class="slider-info"><span class="fillValue">Width: 0 cm</span></div>
@@ -321,7 +323,8 @@ $(document).ready(function () {
                               name="table_form[${tableCount}][header][label]" id="table_header${tableCount}"
                               placeholder="Header 1" value="Header 1">
                           <label for="table_header${tableCount}">Header 1</label>
-                          <input type="range" class="form-range header-slider" min="0" max="10" step="1" value="0">
+                          <input type="range" class="form-range header-slider" min="0" max="12" step="0.01" value="0">
+
                             <input type="hidden" class="header-width" name="table_form[${tableCount}][header_width][]" value="0">
 
                           <div class="slider-info"><span class="fillValue">Width: 0 cm</span></div>
